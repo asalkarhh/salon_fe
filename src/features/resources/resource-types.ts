@@ -5,6 +5,9 @@ import type { Role } from "@/types/enums";
 export interface SelectOption {
   label: string;
   value: string;
+  description?: string;
+  searchText?: string;
+  keywords?: string[];
 }
 
 export interface LookupContext {
@@ -57,6 +60,7 @@ export interface ResourceField {
   name: string;
   label: string;
   type: FieldType;
+  searchable?: boolean;
   placeholder?: string;
   description?: string;
   gridSpan?: 1 | 2;
@@ -70,6 +74,7 @@ export interface ResourceListFilter {
   name: string;
   label: string;
   type: "select" | "date";
+  searchable?: boolean;
   lookupKey?: string;
   options?: SelectOption[];
 }

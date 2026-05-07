@@ -1,5 +1,6 @@
-import { Button } from "@/components/ui/button";
+import { BusinessLogo } from "@/components/layout/BusinessLogo";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ROLE_LABELS } from "@/lib/constants";
 
@@ -11,7 +12,10 @@ export function Header() {
       <div className="mx-auto flex min-h-[72px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
           <MobileSidebar />
-          <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
+          <div className="lg:hidden">
+            <BusinessLogo compact className="max-w-[210px]" />
+          </div>
+          <p className="hidden text-xs uppercase tracking-[0.32em] text-muted-foreground sm:block">
             Salon SaaS
           </p>
           <div>
@@ -23,10 +27,10 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           <div className="rounded-2xl border border-border/80 bg-white/90 px-4 py-3 shadow-sm">
-            <p className="text-sm font-semibold">{user?.fullName ?? "—"}</p>
+            <p className="text-sm font-semibold">{user?.fullName ?? "-"}</p>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span>{user?.username ?? "—"}</span>
-              <span>{user ? ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] : "—"}</span>
+              <span>{user?.username ?? "-"}</span>
+              <span>{user ? ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] : "-"}</span>
               {user?.salonCode ? <span>{user.salonCode}</span> : null}
             </div>
           </div>

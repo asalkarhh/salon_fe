@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { parseApiError } from "@/lib/api";
@@ -147,6 +148,7 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
               const options = field.lookupKey
                 ? helpers.lookupOptions(field.lookupKey)
                 : field.options ?? [];
+              const isSearchable = field.searchable ?? field.lookupKey === "salons";
 
               const registerOptions =
                 field.type === "number" || field.type === "currency"
@@ -183,6 +185,22 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
                           Toggle {field.label.toLowerCase()}
                         </span>
                       </div>
+                    ) : field.type === "select" && isSearchable ? (
+                      <SearchableSelect
+                        id={field.name}
+                        value={String(form.watch(field.name as never) ?? "")}
+                        options={options}
+                        placeholder={field.placeholder ?? `Select ${field.label.toLowerCase()}`}
+                        searchPlaceholder={`Search ${field.label.toLowerCase()}`}
+                        disabled={field.disabled?.({ user, mode, values })}
+                        onValueChange={(nextValue) =>
+                          form.setValue(field.name as never, nextValue as never, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
+                        }
+                      />
                     ) : field.type === "select" ? (
                       <Select
                         id={field.name}

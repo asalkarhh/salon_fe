@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 export interface SelectOption {
   label: string;
   value: string;
+  description?: string;
+  searchText?: string;
+  keywords?: string[];
 }
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {

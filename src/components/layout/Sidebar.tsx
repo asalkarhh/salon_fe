@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { LogOut } from "lucide-react";
+import { BusinessLogo } from "@/components/layout/BusinessLogo";
 import { menuItems } from "@/config/menu";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { APP_NAME } from "@/lib/constants";
@@ -11,7 +12,8 @@ export function Sidebar() {
   return (
     <aside className="hidden min-h-screen w-[290px] shrink-0 border-r border-white/60 bg-white/80 px-5 py-6 backdrop-blur lg:flex lg:flex-col">
       <div className="glass-panel p-5">
-        <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+        <BusinessLogo />
+        <p className="mt-4 text-xs uppercase tracking-[0.3em] text-muted-foreground">
           Premium Suite
         </p>
         <h2 className="mt-3 font-display text-3xl font-semibold">{APP_NAME}</h2>

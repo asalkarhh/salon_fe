@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { AppFooter } from "@/components/layout/AppFooter";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 
@@ -14,6 +15,7 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+      <AppFooter />
     </div>
   );
 }

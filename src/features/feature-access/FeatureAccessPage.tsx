@@ -10,9 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { api, parseApiError } from "@/lib/api";
 import { FEATURE_LABELS } from "@/lib/constants";
+import { toSalonSelectOption } from "@/lib/select-options";
 import { useAuth } from "@/features/auth/AuthProvider";
 import type {
   FeatureAccessItemRequest,
@@ -109,14 +110,12 @@ export function FeatureAccessPage() {
           ) : salonsQuery.isError ? (
             <ErrorState title="Unable to load salons" description={parseApiError(salonsQuery.error)} />
           ) : (
-            <Select
+            <SearchableSelect
               value={selectedSalonId}
-              onChange={(event) => setSelectedSalonId(event.target.value)}
+              onValueChange={setSelectedSalonId}
               placeholder="Choose salon"
-              options={(salonsQuery.data ?? []).map((salon) => ({
-                label: `${salon.businessName} (${salon.salonCode})`,
-                value: salon.id,
-              }))}
+              searchPlaceholder="Search salon or owner"
+              options={(salonsQuery.data ?? []).map(toSalonSelectOption)}
             />
           )}
         </FormSection>

@@ -11,10 +11,12 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select } from "@/components/ui/select";
 import { api, parseApiError } from "@/lib/api";
 import { routes } from "@/config/routes";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { toSalonSelectOption } from "@/lib/select-options";
 import type { BranchResponse, CustomerResponse, QueueTokenCreateRequest, QueueTokenResponse, SalonBusinessResponse } from "@/types/api";
 
 const schema = z.object({
@@ -54,6 +56,16 @@ export function QueueTokenFormPage() {
   });
 
   const selectedSalonId = form.watch("salonBusinessId");
+
+  const handleSalonChange = (salonBusinessId: string) => {
+    form.setValue("salonBusinessId", salonBusinessId, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    form.setValue("branchId", "", { shouldDirty: true, shouldValidate: true });
+    form.setValue("customerProfileId", "", { shouldDirty: true, shouldValidate: true });
+  };
 
   const filteredBranches = useMemo(() => {
     if (user?.role !== "SUPER_ADMIN" || !selectedSalonId) {
@@ -122,14 +134,13 @@ export function QueueTokenFormPage() {
             {user?.role === "SUPER_ADMIN" ? (
               <div className="space-y-2">
                 <Label htmlFor="salonBusinessId">Salon</Label>
-                <Select
+                <SearchableSelect
                   id="salonBusinessId"
+                  value={selectedSalonId ?? ""}
                   placeholder="Choose salon"
-                  options={(salonsQuery.data ?? []).map((salon) => ({
-                    label: `${salon.businessName} (${salon.salonCode})`,
-                    value: salon.id,
-                  }))}
-                  {...form.register("salonBusinessId")}
+                  searchPlaceholder="Search salon or owner"
+                  options={(salonsQuery.data ?? []).map(toSalonSelectOption)}
+                  onValueChange={handleSalonChange}
                 />
               </div>
             ) : null}

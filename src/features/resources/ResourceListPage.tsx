@@ -9,6 +9,7 @@ import { ErrorState } from "@/components/common/ErrorState";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SearchFilterBar } from "@/components/common/SearchFilterBar";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select } from "@/components/ui/select";
 import { parseApiError } from "@/lib/api";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -195,17 +196,43 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
                       className="flex h-11 w-full rounded-2xl border border-input bg-white px-4 py-2 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
                     />
                   ) : (
-                    <Select
-                      value={filters[filter.name] ?? ""}
-                      onChange={(event) =>
-                        setFilters((current) => ({
-                          ...current,
-                          [filter.name]: event.target.value,
-                        }))
+                    (() => {
+                      const options = filter.lookupKey
+                        ? helpers.lookupOptions(filter.lookupKey)
+                        : filter.options ?? [];
+                      const isSearchable = filter.searchable ?? filter.lookupKey === "salons";
+
+                      if (isSearchable) {
+                        return (
+                          <SearchableSelect
+                            value={filters[filter.name] ?? ""}
+                            onValueChange={(nextValue) =>
+                              setFilters((current) => ({
+                                ...current,
+                                [filter.name]: nextValue,
+                              }))
+                            }
+                            placeholder={filter.label}
+                            searchPlaceholder={`Search ${filter.label.toLowerCase()}`}
+                            options={options}
+                          />
+                        );
                       }
-                      placeholder={filter.label}
-                      options={filter.lookupKey ? helpers.lookupOptions(filter.lookupKey) : filter.options ?? []}
-                    />
+
+                      return (
+                        <Select
+                          value={filters[filter.name] ?? ""}
+                          onChange={(event) =>
+                            setFilters((current) => ({
+                              ...current,
+                              [filter.name]: event.target.value,
+                            }))
+                          }
+                          placeholder={filter.label}
+                          options={options}
+                        />
+                      );
+                    })()
                   )}
                 </div>
               ))}

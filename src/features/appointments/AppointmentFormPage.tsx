@@ -13,11 +13,13 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { api, parseApiError } from "@/lib/api";
 import { routes } from "@/config/routes";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { toSalonSelectOption } from "@/lib/select-options";
 import { formatCurrency } from "@/lib/utils";
 import type {
   AppointmentRequest,
@@ -128,6 +130,18 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
 
   const selectedSalonId = form.watch("salonBusinessId");
   const serviceRows = form.watch("services");
+
+  const handleSalonChange = (salonBusinessId: string) => {
+    form.setValue("salonBusinessId", salonBusinessId, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    form.setValue("branchId", "", { shouldDirty: true, shouldValidate: true });
+    form.setValue("customerProfileId", "", { shouldDirty: true, shouldValidate: true });
+    form.setValue("staffProfileId", "", { shouldDirty: true, shouldValidate: true });
+    fieldsArray.replace([{ serviceId: "", price: 0, durationMinutes: 0 }]);
+  };
 
   const filteredBranches = useMemo(() => {
     if (user?.role !== "SUPER_ADMIN" || !selectedSalonId) {
@@ -252,14 +266,13 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
             {user?.role === "SUPER_ADMIN" ? (
               <div className="space-y-2">
                 <Label htmlFor="salonBusinessId">Salon</Label>
-                <Select
+                <SearchableSelect
                   id="salonBusinessId"
+                  value={selectedSalonId ?? ""}
                   placeholder="Choose salon"
-                  options={(salonsQuery.data ?? []).map((salon) => ({
-                    label: `${salon.businessName} (${salon.salonCode})`,
-                    value: salon.id,
-                  }))}
-                  {...form.register("salonBusinessId")}
+                  searchPlaceholder="Search salon or owner"
+                  options={(salonsQuery.data ?? []).map(toSalonSelectOption)}
+                  onValueChange={handleSalonChange}
                 />
               </div>
             ) : null}

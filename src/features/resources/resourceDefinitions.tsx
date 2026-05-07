@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { api } from "@/lib/api";
+import { toSalonSelectOption } from "@/lib/select-options";
 import { formatCurrency, formatDate, formatDateTime, labelize } from "@/lib/utils";
 import { routes } from "@/config/routes";
 import type {
@@ -85,7 +86,7 @@ const salonLookup: LookupDefinition<SalonBusinessResponse> = {
   queryKey: () => ["lookup", "salons"],
   queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,
   enabled: ({ user }) => user.role === "SUPER_ADMIN",
-  toOption: (item) => lookupOption(item, `${item.businessName} (${item.salonCode})`),
+  toOption: toSalonSelectOption,
 };
 
 const planLookup: LookupDefinition<PlanResponse> = {

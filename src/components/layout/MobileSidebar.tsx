@@ -1,6 +1,7 @@
 import { Menu, X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useMemo, useState } from "react";
+import { BusinessLogo } from "@/components/layout/BusinessLogo";
 import { menuItems } from "@/config/menu";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ export function MobileSidebar() {
           <div className="absolute right-0 top-0 flex h-full w-[min(88vw,360px)] flex-col border-l border-white/60 bg-white/95 p-5 shadow-panel backdrop-blur">
             <div className="flex items-start justify-between gap-4">
               <div>
+                <BusinessLogo compact />
                 <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
                   Navigation
                 </p>
