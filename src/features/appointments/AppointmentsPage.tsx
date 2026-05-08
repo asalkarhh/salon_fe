@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { DataTable } from "@/components/common/DataTable";
@@ -25,16 +25,27 @@ import type {
 
 export function AppointmentsPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const supportSalonId = searchParams.get("salonBusinessId") ?? "";
   const [search, setSearch] = useState("");
-  const [salonBusinessId, setSalonBusinessId] = useState("");
+  const [salonBusinessId, setSalonBusinessId] = useState(supportSalonId);
   const [branchId, setBranchId] = useState("");
   const [status, setStatus] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+  const canLoadSupportView = !isSuperAdmin || Boolean(salonBusinessId);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      setSalonBusinessId(supportSalonId);
+      setBranchId("");
+    }
+  }, [isSuperAdmin, supportSalonId]);
 
   const salonsQuery = useQuery({
     queryKey: ["appointments", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,
-    enabled: user?.role === "SUPER_ADMIN",
+    enabled: isSuperAdmin,
   });
   const branchesQuery = useQuery({
     queryKey: ["appointments", "branches"],
@@ -59,7 +70,15 @@ export function AppointmentsPage() {
           },
         })
       ).data,
+    enabled: canLoadSupportView,
   });
+  const filteredBranches = useMemo(() => {
+    if (!isSuperAdmin || !salonBusinessId) {
+      return branchesQuery.data ?? [];
+    }
+    return (branchesQuery.data ?? []).filter((branch) => branch.salonBusinessId === salonBusinessId);
+  }, [branchesQuery.data, isSuperAdmin, salonBusinessId]);
+  const selectedSalon = (salonsQuery.data ?? []).find((salon) => salon.id === salonBusinessId);
 
   const branchMap = Object.fromEntries((branchesQuery.data ?? []).map((branch) => [branch.id, branch.branchName]));
   const customerMap = Object.fromEntries(
@@ -69,6 +88,15 @@ export function AppointmentsPage() {
     ]),
   );
   const staffMap = Object.fromEntries((staffQuery.data ?? []).map((staff) => [staff.id, staff.displayName]));
+
+  if (isSuperAdmin && !supportSalonId && !salonsQuery.isLoading) {
+    return (
+      <ErrorState
+        title="Salon context required"
+        description="Open appointments from a salon support link to keep the superadmin view scoped and read-only."
+      />
+    );
+  }
 
   if (
     appointmentsQuery.isLoading ||
@@ -122,16 +150,26 @@ export function AppointmentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Appointments"
-        title="Appointments"
-        description="Browse, filter, and manage salon appointments exactly through the backend appointment endpoints."
+        eyebrow={isSuperAdmin ? "Appointment Support" : "Appointments"}
+        title={isSuperAdmin ? "Appointment Support" : "Appointments"}
+        description={
+          isSuperAdmin
+            ? `Read-only support view for ${selectedSalon?.businessName ?? "the selected salon"} appointments.`
+            : "Browse, filter, and manage salon appointments exactly through the backend appointment endpoints."
+        }
         action={
-          <Button asChild>
-            <Link to={`${routes.appointments}/new`}>
-              <Plus className="h-4 w-4" />
-              New Appointment
-            </Link>
-          </Button>
+          isSuperAdmin ? (
+            <Button variant="outline" asChild>
+              <Link to={`${routes.salons}/${salonBusinessId}`}>Back to salon</Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to={`${routes.appointments}/new`}>
+                <Plus className="h-4 w-4" />
+                New Appointment
+              </Link>
+            </Button>
+          )
         }
       />
 
@@ -140,23 +178,12 @@ export function AppointmentsPage() {
         onSearchChange={setSearch}
         placeholder="Search by branch, customer, staff, or status"
         filters={
-          <div className="grid w-full gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {user?.role === "SUPER_ADMIN" ? (
-              <Select
-                value={salonBusinessId}
-                onChange={(event) => setSalonBusinessId(event.target.value)}
-                placeholder="Filter by salon"
-                options={(salonsQuery.data ?? []).map((salon) => ({
-                  label: `${salon.businessName} (${salon.salonCode})`,
-                  value: salon.id,
-                }))}
-              />
-            ) : null}
+          <div className="grid w-full gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <Select
               value={branchId}
               onChange={(event) => setBranchId(event.target.value)}
               placeholder="Filter by branch"
-              options={(branchesQuery.data ?? []).map((branch) => ({
+              options={filteredBranches.map((branch) => ({
                 label: branch.branchName,
                 value: branch.id,
               }))}
@@ -211,7 +238,7 @@ export function AppointmentsPage() {
                 <Button size="sm" variant="outline" asChild>
                   <Link to={`${routes.appointments}/${record.id}`}>View</Link>
                 </Button>
-                {user?.role !== "CUSTOMER" ? (
+                {user?.role === "SALON_OWNER" || user?.role === "STAFF" ? (
                   <Button size="sm" variant="ghost" asChild>
                     <Link to={`${routes.appointments}/${record.id}/edit`}>Edit</Link>
                   </Button>

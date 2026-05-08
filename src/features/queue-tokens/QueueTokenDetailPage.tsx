@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { api, parseApiError } from "@/lib/api";
 import type {
   BranchResponse,
@@ -19,6 +20,7 @@ const statuses = ["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
 
 export function QueueTokenDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const tokenQuery = useQuery({
@@ -73,7 +75,11 @@ export function QueueTokenDetailPage() {
       <PageHeader
         eyebrow="Queue Detail"
         title={`Token ${tokenQuery.data.tokenNumber}`}
-        description="Live queue status and timestamps for this branch token."
+        description={
+          user?.role === "SUPER_ADMIN"
+            ? "Read-only support view for queue status and timestamps."
+            : "Live queue status and timestamps for this branch token."
+        }
       />
 
       <Card>
@@ -101,23 +107,25 @@ export function QueueTokenDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Update Status</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          {statuses.map((status) => (
-            <Button
-              key={status}
-              variant={tokenQuery.data?.status === status ? "default" : "outline"}
-              onClick={() => patchMutation.mutate({ status })}
-              disabled={patchMutation.isPending}
-            >
-              {status}
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
+      {user?.role === "SALON_OWNER" || user?.role === "STAFF" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Update Status</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            {statuses.map((status) => (
+              <Button
+                key={status}
+                variant={tokenQuery.data?.status === status ? "default" : "outline"}
+                onClick={() => patchMutation.mutate({ status })}
+                disabled={patchMutation.isPending}
+              >
+                {status}
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

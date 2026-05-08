@@ -45,6 +45,9 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
   };
 
   const { helpers } = useLookupResults(resource.lookupDefinitions, lookupContext);
+  const visibleFilters = resource.listFilters?.filter(
+    (filter) => !(filter.hidden?.(lookupContext) ?? false),
+  );
 
   const listQuery = useQuery({
     queryKey: [resource.key, "list", user.role, filters],
@@ -104,7 +107,14 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
       sortingValue: (record: TRecord) => column.sortingValue?.(record, helpers) ?? "",
     }));
 
-    if (!resource.detailPath && !resource.editPath && !resource.toggleActive) {
+    const canEdit =
+      Boolean(resource.editPath) &&
+      (!resource.editRoles || resource.editRoles.includes(user.role as never));
+    const canToggle =
+      Boolean(resource.toggleActive && resource.activateMutation && resource.deactivateMutation) &&
+      (!resource.editRoles || resource.editRoles.includes(user.role as never));
+
+    if (!resource.detailPath && !canEdit && !canToggle) {
       return baseColumns;
     }
 
@@ -125,12 +135,12 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
                   <Link to={resource.detailPath(id)}>View</Link>
                 </Button>
               ) : null}
-              {resource.editPath ? (
+              {canEdit && resource.editPath ? (
                 <Button size="sm" variant="ghost" asChild>
                   <Link to={resource.editPath(id)}>Edit</Link>
                 </Button>
               ) : null}
-              {toggle && resource.activateMutation && resource.deactivateMutation ? (
+              {canToggle && toggle && resource.activateMutation && resource.deactivateMutation ? (
                 <ConfirmDialog
                   title={`${isActive ? toggle.inactiveLabel : toggle.activeLabel} ${resource.singular}`}
                   description={`This will ${isActive ? "change" : "restore"} the current backend status for this ${resource.singular.toLowerCase()}.`}
@@ -153,7 +163,7 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
         },
       },
     ];
-  }, [activateMutation, deactivateMutation, helpers, resource]);
+  }, [activateMutation, deactivateMutation, helpers, resource, user.role]);
 
   return (
     <div className="space-y-6">
@@ -179,9 +189,9 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
         onSearchChange={setSearch}
         placeholder={resource.searchPlaceholder ?? `Search ${resource.title.toLowerCase()}`}
         filters={
-          resource.listFilters?.length ? (
+          visibleFilters?.length ? (
             <div className="grid w-full gap-3 sm:grid-cols-2 xl:flex">
-              {resource.listFilters.map((filter) => (
+              {visibleFilters.map((filter) => (
                 <div key={filter.name} className="min-w-[180px]">
                   {filter.type === "date" ? (
                     <input

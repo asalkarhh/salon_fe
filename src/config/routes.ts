@@ -3,6 +3,7 @@ export const routes = {
   dashboard: "/dashboard",
   salons: "/salons",
   mySalon: "/my-salon",
+  owners: "/owners",
   createOwner: "/create-owner",
   plans: "/plans",
   subscriptions: "/subscriptions",

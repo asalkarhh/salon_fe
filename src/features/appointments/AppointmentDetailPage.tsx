@@ -102,7 +102,11 @@ export function AppointmentDetailPage() {
       <PageHeader
         eyebrow="Appointment Detail"
         title={`${appointment.appointmentDate} / ${formatTime(appointment.startTime)}`}
-        description="Appointment detail, nested service items, and backend status patch controls."
+        description={
+          user?.role === "SUPER_ADMIN"
+            ? "Read-only support view for appointment details and service line items."
+            : "Appointment detail, nested service items, and backend status patch controls."
+        }
       />
 
       <Card>
@@ -148,7 +152,7 @@ export function AppointmentDetailPage() {
         </CardContent>
       </Card>
 
-      {user?.role !== "CUSTOMER" ? (
+      {user?.role === "SALON_OWNER" || user?.role === "STAFF" ? (
         <Card>
           <CardHeader>
             <CardTitle>Update Status</CardTitle>

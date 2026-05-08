@@ -14,7 +14,6 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { api, parseApiError } from "@/lib/api";
 import { FEATURE_LABELS } from "@/lib/constants";
 import { toSalonSelectOption } from "@/lib/select-options";
-import { useAuth } from "@/features/auth/AuthProvider";
 import type {
   FeatureAccessItemRequest,
   SalonBusinessResponse,
@@ -22,7 +21,6 @@ import type {
 } from "@/types/api";
 
 export function FeatureAccessPage() {
-  const { user } = useAuth();
   const params = useParams<{ salonBusinessId?: string }>();
   const [selectedSalonId, setSelectedSalonId] = useState(params.salonBusinessId ?? "");
   const [draft, setDraft] = useState<Record<string, FeatureAccessItemRequest>>({});
@@ -30,27 +28,22 @@ export function FeatureAccessPage() {
   const salonsQuery = useQuery({
     queryKey: ["feature-access", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,
-    enabled: user?.role === "SUPER_ADMIN",
   });
 
   const queryKey = useMemo(
-    () => ["feature-access", user?.role, selectedSalonId],
-    [selectedSalonId, user?.role],
+    () => ["feature-access", selectedSalonId],
+    [selectedSalonId],
   );
 
   const featureAccessQuery = useQuery({
     queryKey,
-    queryFn: async () => {
-      if (user?.role === "SUPER_ADMIN") {
-        return (
-          await api.get<SalonFeatureAccessResponse>(
-            `/api/feature-access/salons/${selectedSalonId}`,
-          )
-        ).data;
-      }
-      return (await api.get<SalonFeatureAccessResponse>("/api/feature-access/my-salon")).data;
-    },
-    enabled: Boolean(user && (user.role !== "SUPER_ADMIN" || selectedSalonId)),
+    queryFn: async () =>
+      (
+        await api.get<SalonFeatureAccessResponse>(
+          `/api/feature-access/salons/${selectedSalonId}`,
+        )
+      ).data,
+    enabled: Boolean(selectedSalonId),
   });
 
   const updateMutation = useMutation({
@@ -91,10 +84,6 @@ export function FeatureAccessPage() {
     };
   });
 
-  if (!user) {
-    return <LoadingSpinner />;
-  }
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -103,23 +92,21 @@ export function FeatureAccessPage() {
         description="Plan features, overrides, and effective access use the exact backend response model for salon feature management."
       />
 
-      {user.role === "SUPER_ADMIN" ? (
-        <FormSection title="Select salon">
-          {salonsQuery.isLoading ? (
-            <LoadingSpinner label="Loading salons..." />
-          ) : salonsQuery.isError ? (
-            <ErrorState title="Unable to load salons" description={parseApiError(salonsQuery.error)} />
-          ) : (
-            <SearchableSelect
-              value={selectedSalonId}
-              onValueChange={setSelectedSalonId}
-              placeholder="Choose salon"
-              searchPlaceholder="Search salon or owner"
-              options={(salonsQuery.data ?? []).map(toSalonSelectOption)}
-            />
-          )}
-        </FormSection>
-      ) : null}
+      <FormSection title="Select salon">
+        {salonsQuery.isLoading ? (
+          <LoadingSpinner label="Loading salons..." />
+        ) : salonsQuery.isError ? (
+          <ErrorState title="Unable to load salons" description={parseApiError(salonsQuery.error)} />
+        ) : (
+          <SearchableSelect
+            value={selectedSalonId}
+            onValueChange={setSelectedSalonId}
+            placeholder="Choose salon"
+            searchPlaceholder="Search salon or owner"
+            options={(salonsQuery.data ?? []).map(toSalonSelectOption)}
+          />
+        )}
+      </FormSection>
 
       {featureAccessQuery.isLoading ? (
         <LoadingSpinner label="Loading feature access..." />
@@ -153,7 +140,6 @@ export function FeatureAccessPage() {
                     <Input
                       id={`${feature.featureKey}-value`}
                       value={feature.editorValue}
-                      disabled={user.role !== "SUPER_ADMIN"}
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
@@ -171,7 +157,6 @@ export function FeatureAccessPage() {
                   <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-white px-4">
                     <Checkbox
                       checked={Boolean(feature.editorEnabled)}
-                      disabled={user.role !== "SUPER_ADMIN"}
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
@@ -192,25 +177,23 @@ export function FeatureAccessPage() {
               </div>
             ))}
           </div>
-          {user.role === "SUPER_ADMIN" ? (
-            <div className="mt-6">
-              <Button
-                onClick={() =>
-                  updateMutation.mutate(
-                    effectiveDraft.map((feature) => ({
-                      featureKey: feature.featureKey,
-                      featureName: feature.featureName,
-                      featureValue: feature.editorValue,
-                      enabled: feature.editorEnabled,
-                    })),
-                  )
-                }
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? "Saving..." : "Save overrides"}
-              </Button>
-            </div>
-          ) : null}
+          <div className="mt-6">
+            <Button
+              onClick={() =>
+                updateMutation.mutate(
+                  effectiveDraft.map((feature) => ({
+                    featureKey: feature.featureKey,
+                    featureName: feature.featureName,
+                    featureValue: feature.editorValue,
+                    enabled: feature.editorEnabled,
+                  })),
+                )
+              }
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Saving..." : "Save overrides"}
+            </Button>
+          </div>
         </FormSection>
       ) : null}
     </div>

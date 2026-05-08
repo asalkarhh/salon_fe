@@ -1,10 +1,13 @@
 import { z } from "zod";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { api } from "@/lib/api";
 import { toSalonSelectOption } from "@/lib/select-options";
 import { formatCurrency, formatDate, formatDateTime, labelize } from "@/lib/utils";
 import { routes } from "@/config/routes";
+import { SubscriptionStatusActions } from "@/features/subscriptions/SubscriptionStatusActions";
 import type {
   BranchCreateRequest,
   BranchResponse,
@@ -98,9 +101,26 @@ const planLookup: LookupDefinition<PlanResponse> = {
 
 const branchLookup: LookupDefinition<BranchResponse> = {
   key: "branches",
-  queryKey: () => ["lookup", "branches"],
-  queryFn: async () => (await api.get<BranchResponse[]>("/api/branches")).data,
-  toOption: (item) => lookupOption(item, item.branchName),
+  queryKey: (context) => [
+    "lookup",
+    "branches",
+    context.user.role,
+    context.values.salonBusinessId,
+    context.filters.salonBusinessId,
+  ],
+  queryFn: async (context) => {
+    const salonBusinessId = String(
+      context.values.salonBusinessId ?? context.filters.salonBusinessId ?? "",
+    );
+    const params = salonBusinessId ? { salonBusinessId } : undefined;
+    return (await api.get<BranchResponse[]>("/api/branches", { params })).data;
+  },
+  toOption: (item) => ({
+    label: item.branchName,
+    value: item.id,
+    description: item.salonName ? `${item.salonName} (${item.salonCode})` : undefined,
+    keywords: [item.salonName, item.salonCode].filter(Boolean) as string[],
+  }),
 };
 
 const categoryLookup: LookupDefinition<ServiceCategoryResponse> = {
@@ -110,23 +130,15 @@ const categoryLookup: LookupDefinition<ServiceCategoryResponse> = {
     "service-categories",
     context.user.role,
     context.values.salonBusinessId,
+    context.filters.salonBusinessId,
   ],
   queryFn: async (context) => {
-    const salonBusinessId = String(context.values.salonBusinessId ?? "");
-    if (context.user.role === "SUPER_ADMIN") {
-      if (!salonBusinessId) {
-        return [];
-      }
-      return (
-        await api.get<ServiceCategoryResponse[]>("/api/services/categories", {
-          params: { salonBusinessId },
-        })
-      ).data;
-    }
-    return (await api.get<ServiceCategoryResponse[]>("/api/services/categories")).data;
+    const salonBusinessId = String(
+      context.values.salonBusinessId ?? context.filters.salonBusinessId ?? "",
+    );
+    const params = salonBusinessId ? { salonBusinessId } : undefined;
+    return (await api.get<ServiceCategoryResponse[]>("/api/services/categories", { params })).data;
   },
-  enabled: ({ user, values }) =>
-    user.role !== "SUPER_ADMIN" || Boolean(values.salonBusinessId),
   toOption: (item) => lookupOption(item, item.name),
 };
 
@@ -137,9 +149,12 @@ export const serviceLookup: LookupDefinition<ServiceResponse> = {
     "services",
     context.user.role,
     context.values.salonBusinessId,
+    context.filters.salonBusinessId,
   ],
   queryFn: async (context) => {
-    const salonBusinessId = String(context.values.salonBusinessId ?? "");
+    const salonBusinessId = String(
+      context.values.salonBusinessId ?? context.filters.salonBusinessId ?? "",
+    );
     const params =
       context.user.role === "SUPER_ADMIN" && salonBusinessId
         ? { salonBusinessId }
@@ -158,10 +173,32 @@ export const customerLookup: LookupDefinition<CustomerResponse> = {
 
 export const staffLookup: LookupDefinition<StaffResponse> = {
   key: "staff",
-  queryKey: () => ["lookup", "staff"],
-  queryFn: async () => (await api.get<StaffResponse[]>("/api/staff")).data,
-  toOption: (item) =>
-    lookupOption(item, `${item.displayName}${item.staffCode ? ` (${item.staffCode})` : ""}`),
+  queryKey: (context) => [
+    "lookup",
+    "staff",
+    context.user.role,
+    context.values.salonBusinessId,
+    context.filters.salonBusinessId,
+    context.values.branchId,
+    context.filters.branchId,
+  ],
+  queryFn: async (context) => {
+    const salonBusinessId = String(
+      context.values.salonBusinessId ?? context.filters.salonBusinessId ?? "",
+    );
+    const branchId = String(context.values.branchId ?? context.filters.branchId ?? "");
+    const params = {
+      ...(salonBusinessId ? { salonBusinessId } : {}),
+      ...(branchId ? { branchId } : {}),
+    };
+    return (await api.get<StaffResponse[]>("/api/staff", { params })).data;
+  },
+  toOption: (item) => ({
+    label: `${item.displayName}${item.staffCode ? ` (${item.staffCode})` : ""}`,
+    value: item.id,
+    description: [item.branchName, item.salonName].filter(Boolean).join(" / ") || undefined,
+    keywords: [item.fullName, item.email, item.phone, item.branchName, item.salonName].filter(Boolean) as string[],
+  }),
 };
 
 const invoiceLookup: LookupDefinition<{ id: string; invoiceNumber: string }> = {
@@ -425,6 +462,33 @@ export const resourceRegistry = {
       { label: "Status", value: (record) => <StatusBadge status={record.isActive ? "ACTIVE" : "SUSPENDED"} /> },
       { label: "Created", value: (record) => formatDateTime(record.createdAt) },
     ],
+    detailExtra: (record, _helpers, user) =>
+      user.role === "SUPER_ADMIN" ? (
+        <Card>
+          <CardContent className="space-y-4 p-5">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Support Views</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Open salon-scoped, read-only operational views for support without exposing those modules in the main superadmin navigation.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" asChild>
+                <Link to={`${routes.appointments}?salonBusinessId=${record.id}`}>Appointments</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to={`${routes.queueTokens}?salonBusinessId=${record.id}`}>Queue Tokens</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to={`${routes.invoices}?salonBusinessId=${record.id}`}>Invoices</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to={`${routes.payments}?salonBusinessId=${record.id}`}>Payments</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null,
     searchValues: (record) => [record.businessName, record.salonCode, record.ownerName, record.ownerUsername],
   } satisfies ResourceDefinition<SalonBusinessResponse, UpdateSalonBusinessRequest>,
   plans: {
@@ -434,9 +498,11 @@ export const resourceRegistry = {
     description: "Subscription plan catalog used by superadmin when onboarding and managing salon memberships.",
     roles: ["SUPER_ADMIN"] satisfies Role[],
     createRoles: ["SUPER_ADMIN"] satisfies Role[],
+    editRoles: ["SUPER_ADMIN"] satisfies Role[],
     listPath: routes.plans,
     createPath: `${routes.plans}/new`,
     detailPath: (id) => `${routes.plans}/${id}`,
+    editPath: (id) => `${routes.plans}/${id}/edit`,
     schema: planSchema,
     defaultValues: () => ({
       name: "",
@@ -448,6 +514,15 @@ export const resourceRegistry = {
       active: true,
     }),
     toPayload: (values) => cleanPayload(values as PlanRequest),
+    toFormValues: (record) => ({
+      name: record.name,
+      description: record.description ?? "",
+      monthlyPrice: record.monthlyPrice,
+      yearlyPrice: record.yearlyPrice ?? undefined,
+      maxBranches: record.maxBranches ?? undefined,
+      maxStaff: record.maxStaff ?? undefined,
+      active: record.active,
+    }),
     fields: [
       { name: "name", label: "Name", type: "text" },
       { name: "description", label: "Description", type: "textarea", gridSpan: 2 },
@@ -461,6 +536,8 @@ export const resourceRegistry = {
     getQuery: async (id) => (await api.get<PlanResponse>(`/api/subscriptions/plans/${id}`)).data,
     createMutation: async (payload) =>
       (await api.post<PlanResponse>("/api/subscriptions/plans", payload)).data,
+    updateMutation: async (id, payload) =>
+      (await api.put<PlanResponse>(`/api/subscriptions/plans/${id}`, payload)).data,
     columns: () => [
       { id: "name", header: "Plan", cell: (record) => record.name, sortingValue: (record) => record.name },
       { id: "monthlyPrice", header: "Monthly", cell: (record) => formatCurrency(record.monthlyPrice), sortingValue: (record) => record.monthlyPrice },
@@ -543,6 +620,7 @@ export const resourceRegistry = {
         label: "Filter by salon",
         type: "select",
         lookupKey: "salons",
+        hidden: ({ user }) => user.role !== "SUPER_ADMIN",
       },
     ],
     listQuery: async (user, filters) =>
@@ -564,6 +642,11 @@ export const resourceRegistry = {
       { id: "plan", header: "Plan", cell: (record) => helpers.lookupLabel("plans", record.planId) },
       { id: "status", header: "Status", cell: (record) => <StatusBadge status={record.status} /> },
       { id: "billing", header: "Billing", cell: (record) => formatCurrency(record.billingAmount) },
+      {
+        id: "manage",
+        header: "Status Control",
+        cell: (record) => <SubscriptionStatusActions subscription={record} compact />,
+      },
       { id: "window", header: "Dates", cell: (record) => `${formatDate(record.startDate)} → ${formatDate(record.endDate)}` },
     ],
     mobileCard: (record, helpers) =>
@@ -582,6 +665,20 @@ export const resourceRegistry = {
       { label: "Billing Amount", value: (record) => formatCurrency(record.billingAmount) },
       { label: "Auto Renew", value: (record) => (record.autoRenew ? "Yes" : "No") },
     ],
+    detailExtra: (record, _helpers, user) =>
+      user.role === "SUPER_ADMIN" ? (
+        <Card>
+          <CardContent className="space-y-4 p-5">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Status Control</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Change the subscription state directly from here without opening the edit form.
+              </p>
+            </div>
+            <SubscriptionStatusActions subscription={record} />
+          </CardContent>
+        </Card>
+      ) : null,
     searchValues: (record, helpers) => [
       helpers.lookupLabel("salons", record.salonBusinessId),
       helpers.lookupLabel("plans", record.planId),
@@ -595,7 +692,7 @@ export const resourceRegistry = {
     description: "Branch management for salon owners, including Starter plan branch-limit enforcement from the backend.",
     roles: ["SUPER_ADMIN", "SALON_OWNER"] satisfies Role[],
     createRoles: ["SALON_OWNER"] satisfies Role[],
-    editRoles: ["SALON_OWNER"] satisfies Role[],
+    editRoles: ["SUPER_ADMIN", "SALON_OWNER"] satisfies Role[],
     listPath: routes.branches,
     createPath: `${routes.branches}/new`,
     detailPath: (id) => `${routes.branches}/${id}`,
@@ -626,7 +723,25 @@ export const resourceRegistry = {
       { name: "state", label: "State", type: "text" },
       { name: "pincode", label: "Pincode", type: "text" },
     ],
-    listQuery: async () => (await api.get<BranchResponse[]>("/api/branches")).data,
+    lookupDefinitions: [salonLookup],
+    listFilters: [
+      {
+        name: "salonBusinessId",
+        label: "Filter by salon",
+        type: "select",
+        lookupKey: "salons",
+        hidden: ({ user }) => user.role !== "SUPER_ADMIN",
+      },
+    ],
+    listQuery: async (user, filters) =>
+      (
+        await api.get<BranchResponse[]>("/api/branches", {
+          params:
+            user.role === "SUPER_ADMIN" && filters.salonBusinessId
+              ? { salonBusinessId: filters.salonBusinessId }
+              : undefined,
+        })
+      ).data,
     getQuery: async (id) => (await api.get<BranchResponse>(`/api/branches/${id}`)).data,
     createMutation: async (payload) => (await api.post<BranchResponse>("/api/branches", payload)).data,
     updateMutation: async (id, payload) =>
@@ -640,19 +755,21 @@ export const resourceRegistry = {
     },
     columns: () => [
       { id: "branchName", header: "Branch", cell: (record) => record.branchName, sortingValue: (record) => record.branchName },
+      { id: "salon", header: "Salon", cell: (record) => record.salonName, sortingValue: (record) => record.salonName },
       { id: "phone", header: "Phone", cell: (record) => record.phone ?? "—" },
       { id: "city", header: "Location", cell: (record) => `${record.city ?? "—"}, ${record.state ?? "—"}` },
       { id: "status", header: "Status", cell: (record) => <StatusBadge status={record.isActive ? "ACTIVE" : "INACTIVE"} /> },
     ],
     mobileCard: (record) =>
       detailCard(record.branchName, [
+        <span key="salon">{record.salonName}</span>,
         <span key="location">{record.city ?? "—"}, {record.state ?? "—"}</span>,
         <span key="phone">{record.phone ?? "—"}</span>,
         <StatusBadge key="status" status={record.isActive ? "ACTIVE" : "INACTIVE"} />,
       ]),
     detailFields: () => [
       { label: "Branch Name", value: (record) => record.branchName },
-      { label: "Salon Business ID", value: (record) => record.salonBusinessId },
+      { label: "Salon", value: (record) => `${record.salonName} (${record.salonCode})` },
       { label: "Phone", value: (record) => record.phone ?? "—" },
       { label: "Address", value: (record) => record.address ?? "—" },
       { label: "City", value: (record) => record.city ?? "—" },
@@ -660,7 +777,14 @@ export const resourceRegistry = {
       { label: "Pincode", value: (record) => record.pincode ?? "—" },
       { label: "Status", value: (record) => <StatusBadge status={record.isActive ? "ACTIVE" : "INACTIVE"} /> },
     ],
-    searchValues: (record) => [record.branchName, record.city ?? "", record.state ?? "", record.phone ?? ""],
+    searchValues: (record) => [
+      record.branchName,
+      record.salonName,
+      record.salonCode,
+      record.city ?? "",
+      record.state ?? "",
+      record.phone ?? "",
+    ],
   } satisfies ResourceDefinition<BranchResponse, BranchCreateRequest>,
   serviceCategories: {
     key: "service-categories",
@@ -775,6 +899,7 @@ export const resourceRegistry = {
         label: "Salon",
         type: "select",
         lookupKey: "salons",
+        resetOnChange: ["serviceCategoryId"],
         hidden: ({ user }) => user.role !== "SUPER_ADMIN",
       },
       {
@@ -796,6 +921,7 @@ export const resourceRegistry = {
         label: "Filter by salon",
         type: "select",
         lookupKey: "salons",
+        hidden: ({ user }) => user.role !== "SUPER_ADMIN",
       },
     ],
     listQuery: async (user, filters) =>
@@ -903,6 +1029,7 @@ export const resourceRegistry = {
         label: "Filter by salon",
         type: "select",
         lookupKey: "salons",
+        hidden: ({ user }) => user.role !== "SUPER_ADMIN",
       },
     ],
     listQuery: async () => (await api.get<CustomerResponse[]>("/api/customers")).data,
@@ -998,7 +1125,7 @@ export const resourceRegistry = {
       { name: "email", label: "Email", type: "email" },
       { name: "phone", label: "Phone", type: "text" },
       { name: "password", label: "Password", type: "password", description: "Only used for new staff user creation." },
-      { name: "branchId", label: "Branch", type: "select", lookupKey: "branches" },
+      { name: "branchId", label: "Branch", type: "select", lookupKey: "branches", searchable: true },
       { name: "displayName", label: "Display Name", type: "text" },
       { name: "designation", label: "Designation", type: "text" },
       { name: "bio", label: "Bio", type: "textarea", gridSpan: 2 },
@@ -1010,8 +1137,32 @@ export const resourceRegistry = {
       { name: "hourlyRate", label: "Hourly Rate", type: "currency" },
       { name: "active", label: "Active", type: "checkbox", gridSpan: 2 },
     ],
-    lookupDefinitions: [branchLookup],
-    listQuery: async () => (await api.get<StaffResponse[]>("/api/staff")).data,
+    lookupDefinitions: [salonLookup, branchLookup],
+    listFilters: [
+      {
+        name: "salonBusinessId",
+        label: "Filter by salon",
+        type: "select",
+        lookupKey: "salons",
+        hidden: ({ user }) => user.role !== "SUPER_ADMIN",
+      },
+      {
+        name: "branchId",
+        label: "Filter by branch",
+        type: "select",
+        lookupKey: "branches",
+        searchable: true,
+      },
+    ],
+    listQuery: async (_user, filters) =>
+      (
+        await api.get<StaffResponse[]>("/api/staff", {
+          params: {
+            ...(filters.salonBusinessId ? { salonBusinessId: filters.salonBusinessId } : {}),
+            ...(filters.branchId ? { branchId: filters.branchId } : {}),
+          },
+        })
+      ).data,
     getQuery: async (id) => (await api.get<StaffResponse>(`/api/staff/${id}`)).data,
     createMutation: async (payload) => (await api.post<StaffResponse>("/api/staff", payload)).data,
     updateMutation: async (id, payload) =>
@@ -1023,32 +1174,48 @@ export const resourceRegistry = {
       activeLabel: "Activate",
       inactiveLabel: "Deactivate",
     },
-    columns: (helpers) => [
+    columns: () => [
       {
         id: "displayName",
         header: "Staff",
         cell: (record) => (
           <div>
             <p className="font-semibold">{record.displayName}</p>
-            <p className="text-xs text-muted-foreground">{record.staffCode}</p>
+            <p className="text-xs text-muted-foreground">{record.fullName}</p>
           </div>
         ),
       },
-      { id: "branch", header: "Branch", cell: (record) => helpers.lookupLabel("branches", record.branchId) },
+      {
+        id: "contact",
+        header: "Contact",
+        cell: (record) => (
+          <div className="space-y-1">
+            <p>{record.email ?? record.username}</p>
+            <p className="text-xs text-muted-foreground">{record.phone ?? record.staffCode}</p>
+          </div>
+        ),
+      },
+      { id: "salon", header: "Salon", cell: (record) => record.salonName, sortingValue: (record) => record.salonName },
+      { id: "branch", header: "Branch", cell: (record) => record.branchName ?? "Unassigned" },
       { id: "compensationType", header: "Compensation", cell: (record) => labelize(record.compensationType ?? "FIXED_SALARY") },
       { id: "active", header: "Status", cell: (record) => <StatusBadge status={record.active ? "ACTIVE" : "INACTIVE"} /> },
     ],
-    mobileCard: (record, helpers) =>
+    mobileCard: (record) =>
       detailCard(record.displayName, [
         <span key="staffCode">{record.staffCode}</span>,
-        <span key="branch">{helpers.lookupLabel("branches", record.branchId)}</span>,
+        <span key="salon">{record.salonName}</span>,
+        <span key="branch">{record.branchName ?? "Unassigned"}</span>,
         <StatusBadge key="status" status={record.active ? "ACTIVE" : "INACTIVE"} />,
       ]),
-    detailFields: (helpers) => [
+    detailFields: () => [
       { label: "Display Name", value: (record) => record.displayName },
+      { label: "Full Name", value: (record) => record.fullName },
       { label: "Staff Code", value: (record) => record.staffCode },
       { label: "Username", value: (record) => record.username },
-      { label: "Branch", value: (record) => helpers.lookupLabel("branches", record.branchId) },
+      { label: "Email", value: (record) => record.email ?? "-" },
+      { label: "Phone", value: (record) => record.phone ?? "-" },
+      { label: "Salon", value: (record) => `${record.salonName} (${record.salonCode})` },
+      { label: "Branch", value: (record) => record.branchName ?? "Unassigned" },
       { label: "Designation", value: (record) => record.designation ?? "—" },
       { label: "Bio", value: (record) => record.bio ?? "—" },
       { label: "Compensation Type", value: (record) => labelize(record.compensationType ?? "FIXED_SALARY") },
@@ -1058,10 +1225,14 @@ export const resourceRegistry = {
       { label: "Hourly Rate", value: (record) => formatCurrency(record.hourlyRate) },
       { label: "Hire Date", value: (record) => formatDate(record.hireDate) },
     ],
-    searchValues: (record, helpers) => [
+    searchValues: (record) => [
       record.displayName,
+      record.fullName,
       record.staffCode,
-      helpers.lookupLabel("branches", record.branchId),
+      record.email ?? "",
+      record.phone ?? "",
+      record.salonName,
+      record.branchName ?? "",
       record.designation ?? "",
     ],
   } satisfies ResourceDefinition<StaffResponse, Record<string, unknown>>,
@@ -1071,8 +1242,8 @@ export const resourceRegistry = {
     singular: "Payment",
     description: "Invoice-linked payments with backend payment-status recalculation and audit timestamps.",
     roles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"] satisfies Role[],
-    createRoles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"] satisfies Role[],
-    editRoles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"] satisfies Role[],
+    createRoles: ["SALON_OWNER", "STAFF"] satisfies Role[],
+    editRoles: ["SALON_OWNER", "STAFF"] satisfies Role[],
     listPath: routes.payments,
     createPath: `${routes.payments}/new`,
     detailPath: (id) => `${routes.payments}/${id}`,

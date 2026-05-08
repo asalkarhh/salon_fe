@@ -64,6 +64,35 @@ export interface CreateOwnerResponse {
   trialEndsOn: string;
 }
 
+export interface OwnerUpdateRequest {
+  fullName: string;
+  username: string;
+  email: string;
+  phone: string;
+  businessName: string;
+}
+
+export interface OwnerResponse {
+  id: string;
+  fullName: string;
+  username: string;
+  email: string;
+  phone: string;
+  status: UserStatus;
+  salonBusinessId: string;
+  salonCode: string;
+  businessName: string;
+  salonActive: boolean;
+  branchCount: number;
+  subscriptionId: string | null;
+  planId: string | null;
+  planName: string | null;
+  subscriptionStatus: SubscriptionStatus | null;
+  trialEndsOn: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PlanFeatureResponse {
   id: string;
   planId: string;
@@ -205,6 +234,8 @@ export interface BranchUpdateRequest extends BranchCreateRequest {}
 export interface BranchResponse {
   id: string;
   salonBusinessId: string;
+  salonName: string;
+  salonCode: string;
   branchName: string;
   phone: string | null;
   address: string | null;
@@ -310,8 +341,14 @@ export interface StaffResponse {
   staffCode: string;
   userId: string;
   username: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
   salonBusinessId: string;
+  salonName: string;
+  salonCode: string;
   branchId: string | null;
+  branchName: string | null;
   displayName: string;
   designation: string | null;
   bio: string | null;
@@ -474,10 +511,17 @@ export interface PaymentResponse {
 export interface StaffEarningResponse {
   id: string;
   salonBusinessId: string;
+  salonName: string;
+  salonCode: string;
   staffProfileId: string;
+  staffCode: string;
+  staffDisplayName: string;
+  branchId: string | null;
+  branchName: string | null;
   appointmentId: string;
   invoiceId: string;
   serviceId: string;
+  serviceName: string;
   commissionPercentage: number;
   grossAmount: number;
   earningAmount: number;

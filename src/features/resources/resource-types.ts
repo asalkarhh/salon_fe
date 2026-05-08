@@ -66,6 +66,7 @@ export interface ResourceField {
   gridSpan?: 1 | 2;
   lookupKey?: string;
   options?: SelectOption[];
+  resetOnChange?: string[];
   hidden?: (context: FieldContext) => boolean;
   disabled?: (context: FieldContext) => boolean;
 }
@@ -77,6 +78,7 @@ export interface ResourceListFilter {
   searchable?: boolean;
   lookupKey?: string;
   options?: SelectOption[];
+  hidden?: (context: LookupContext) => boolean;
 }
 
 export interface DetailField<TRecord> {
@@ -136,6 +138,11 @@ export interface ResourceDefinition<TRecord, TForm> {
   columns: (helpers: ResourceHelpers) => ResourceColumn<TRecord>[];
   mobileCard: (record: TRecord, helpers: ResourceHelpers) => React.ReactNode;
   detailFields: (helpers: ResourceHelpers) => DetailField<TRecord>[];
+  detailExtra?: (
+    record: TRecord,
+    helpers: ResourceHelpers,
+    user: CurrentUserResponse,
+  ) => React.ReactNode;
   searchValues: (record: TRecord, helpers: ResourceHelpers) => string[];
   localFilter?: (record: TRecord, filters: Record<string, string>) => boolean;
 }

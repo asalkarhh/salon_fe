@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -63,14 +63,54 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
     resolver: zodResolver(resource.schema(mode) as never) as never,
     defaultValues: resource.defaultValues(user) as never,
   });
+  const previousValuesRef = useRef<Record<string, unknown>>({});
+  const skipDependentResetRef = useRef(true);
 
   useEffect(() => {
     if (recordQuery.data && resource.toFormValues) {
-      form.reset(resource.toFormValues(recordQuery.data, user) as Record<string, unknown>);
+      const nextValues = resource.toFormValues(recordQuery.data, user) as Record<string, unknown>;
+      previousValuesRef.current = { ...nextValues };
+      skipDependentResetRef.current = true;
+      form.reset(nextValues);
     }
   }, [form, recordQuery.data, resource, user]);
 
   const values = form.watch();
+
+  useEffect(() => {
+    const currentValues = values as Record<string, unknown>;
+    if (skipDependentResetRef.current) {
+      previousValuesRef.current = { ...currentValues };
+      skipDependentResetRef.current = false;
+      return;
+    }
+
+    for (const field of resource.fields) {
+      if (!field.resetOnChange?.length) {
+        continue;
+      }
+
+      const previousValue = previousValuesRef.current[field.name];
+      const currentValue = currentValues[field.name];
+      if (previousValue === currentValue) {
+        continue;
+      }
+
+      for (const targetField of field.resetOnChange) {
+        const targetValue = currentValues[targetField];
+        if (targetField === field.name || targetValue === undefined || targetValue === "") {
+          continue;
+        }
+        form.setValue(targetField as never, "" as never, {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: true,
+        });
+      }
+    }
+
+    previousValuesRef.current = { ...currentValues };
+  }, [form, resource.fields, values]);
 
   const { helpers } = useLookupResults(resource.lookupDefinitions, {
     user,

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { DataTable } from "@/components/common/DataTable";
@@ -13,13 +13,37 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { api, parseApiError } from "@/lib/api";
 import { routes } from "@/config/routes";
-import type { BranchResponse, CustomerResponse, QueueTokenResponse } from "@/types/api";
+import { useAuth } from "@/features/auth/AuthProvider";
+import type {
+  BranchResponse,
+  CustomerResponse,
+  QueueTokenResponse,
+  SalonBusinessResponse,
+} from "@/types/api";
 
 export function QueueTokensPage() {
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const supportSalonId = searchParams.get("salonBusinessId") ?? "";
   const [search, setSearch] = useState("");
+  const [salonBusinessId, setSalonBusinessId] = useState(supportSalonId);
   const [branchId, setBranchId] = useState("");
   const [tokenDate, setTokenDate] = useState("");
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+  const canLoadSupportView = !isSuperAdmin || Boolean(salonBusinessId);
 
+  useEffect(() => {
+    if (isSuperAdmin) {
+      setSalonBusinessId(supportSalonId);
+      setBranchId("");
+    }
+  }, [isSuperAdmin, supportSalonId]);
+
+  const salonsQuery = useQuery({
+    queryKey: ["queue", "salons"],
+    queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,
+    enabled: isSuperAdmin,
+  });
   const branchesQuery = useQuery({
     queryKey: ["queue", "branches"],
     queryFn: async () => (await api.get<BranchResponse[]>("/api/branches")).data,
@@ -29,17 +53,26 @@ export function QueueTokensPage() {
     queryFn: async () => (await api.get<CustomerResponse[]>("/api/customers")).data,
   });
   const queueQuery = useQuery({
-    queryKey: ["queue", "list", branchId, tokenDate],
+    queryKey: ["queue", "list", salonBusinessId, branchId, tokenDate],
     queryFn: async () =>
       (
         await api.get<QueueTokenResponse[]>("/api/queue-tokens", {
           params: {
+            salonBusinessId: salonBusinessId || undefined,
             branchId: branchId || undefined,
             tokenDate: tokenDate || undefined,
           },
         })
       ).data,
+    enabled: canLoadSupportView,
   });
+  const filteredBranches = useMemo(() => {
+    if (!isSuperAdmin || !salonBusinessId) {
+      return branchesQuery.data ?? [];
+    }
+    return (branchesQuery.data ?? []).filter((branch) => branch.salonBusinessId === salonBusinessId);
+  }, [branchesQuery.data, isSuperAdmin, salonBusinessId]);
+  const selectedSalon = (salonsQuery.data ?? []).find((salon) => salon.id === salonBusinessId);
 
   const branchMap = Object.fromEntries((branchesQuery.data ?? []).map((branch) => [branch.id, branch.branchName]));
   const customerMap = Object.fromEntries(
@@ -49,29 +82,40 @@ export function QueueTokensPage() {
     ]),
   );
 
-  if (queueQuery.isLoading || branchesQuery.isLoading || customersQuery.isLoading) {
+  if (isSuperAdmin && !supportSalonId && !salonsQuery.isLoading) {
+    return (
+      <ErrorState
+        title="Salon context required"
+        description="Open queue tokens from a salon support link to keep the superadmin view scoped and read-only."
+      />
+    );
+  }
+
+  if (queueQuery.isLoading || branchesQuery.isLoading || customersQuery.isLoading || salonsQuery.isLoading) {
     return <LoadingSpinner label="Loading queue tokens..." />;
   }
 
-  if (queueQuery.isError || branchesQuery.isError || customersQuery.isError) {
+  if (queueQuery.isError || branchesQuery.isError || customersQuery.isError || salonsQuery.isError) {
     return (
       <ErrorState
         title="Unable to load queue tokens"
         description={
           parseApiError(queueQuery.error) ||
           parseApiError(branchesQuery.error) ||
-          parseApiError(customersQuery.error)
+          parseApiError(customersQuery.error) ||
+          parseApiError(salonsQuery.error)
         }
       />
     );
   }
 
   const records = (queueQuery.data ?? []).filter((token) => {
+    const matchesSalon = !salonBusinessId || token.salonBusinessId === salonBusinessId;
     if (!search.trim()) {
-      return true;
+      return matchesSalon;
     }
 
-    return [
+    return matchesSalon && [
       String(token.tokenNumber),
       branchMap[token.branchId] ?? "",
       customerMap[token.customerProfileId] ?? "",
@@ -85,16 +129,26 @@ export function QueueTokensPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Queue Management"
-        title="Queue Tokens"
-        description="Track walk-ins, token order, and live queue status with branch and date filters."
+        eyebrow={isSuperAdmin ? "Queue Support" : "Queue Management"}
+        title={isSuperAdmin ? "Queue Support" : "Queue Tokens"}
+        description={
+          isSuperAdmin
+            ? `Read-only support view for ${selectedSalon?.businessName ?? "the selected salon"} queue tokens.`
+            : "Track walk-ins, token order, and live queue status with branch and date filters."
+        }
         action={
-          <Button asChild>
-            <Link to={`${routes.queueTokens}/new`}>
-              <Plus className="h-4 w-4" />
-              New Queue Token
-            </Link>
-          </Button>
+          isSuperAdmin ? (
+            <Button variant="outline" asChild>
+              <Link to={`${routes.salons}/${salonBusinessId}`}>Back to salon</Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to={`${routes.queueTokens}/new`}>
+                <Plus className="h-4 w-4" />
+                New Queue Token
+              </Link>
+            </Button>
+          )
         }
       />
 
@@ -103,13 +157,13 @@ export function QueueTokensPage() {
         onSearchChange={setSearch}
         placeholder="Search by token, branch, customer, or status"
         filters={
-          <div className="grid w-full gap-3 sm:grid-cols-2 xl:flex">
-            <div className="min-w-[220px]">
+          <div className="grid w-full gap-3 sm:grid-cols-2 xl:grid-cols-2">
+            <div>
               <Select
                 value={branchId}
                 onChange={(event) => setBranchId(event.target.value)}
                 placeholder="Filter by branch"
-                options={(branchesQuery.data ?? []).map((branch) => ({
+                options={filteredBranches.map((branch) => ({
                   label: branch.branchName,
                   value: branch.id,
                 }))}

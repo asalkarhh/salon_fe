@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { DataTable } from "@/components/common/DataTable";
@@ -25,14 +25,24 @@ import type {
 
 export function InvoicesPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const supportSalonId = searchParams.get("salonBusinessId") ?? "";
   const [search, setSearch] = useState("");
-  const [salonBusinessId, setSalonBusinessId] = useState("");
+  const [salonBusinessId, setSalonBusinessId] = useState(supportSalonId);
   const [paymentStatus, setPaymentStatus] = useState("");
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+  const canLoadSupportView = !isSuperAdmin || Boolean(salonBusinessId);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      setSalonBusinessId(supportSalonId);
+    }
+  }, [isSuperAdmin, supportSalonId]);
 
   const salonsQuery = useQuery({
     queryKey: ["invoices", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,
-    enabled: user?.role === "SUPER_ADMIN",
+    enabled: isSuperAdmin,
   });
   const branchesQuery = useQuery({
     queryKey: ["invoices", "branches"],
@@ -54,7 +64,9 @@ export function InvoicesPage() {
           params: { salonBusinessId: salonBusinessId || undefined },
         })
       ).data,
+    enabled: canLoadSupportView,
   });
+  const selectedSalon = (salonsQuery.data ?? []).find((salon) => salon.id === salonBusinessId);
 
   const branchMap = Object.fromEntries((branchesQuery.data ?? []).map((branch) => [branch.id, branch.branchName]));
   const customerMap = Object.fromEntries(
@@ -69,6 +81,15 @@ export function InvoicesPage() {
       `${appointment.appointmentDate} ${appointment.startTime.slice(0, 5)}`,
     ]),
   );
+
+  if (isSuperAdmin && !supportSalonId && !salonsQuery.isLoading) {
+    return (
+      <ErrorState
+        title="Salon context required"
+        description="Open invoices from a salon support link to keep the superadmin view scoped and read-only."
+      />
+    );
+  }
 
   if (
     salonsQuery.isLoading ||
@@ -121,16 +142,26 @@ export function InvoicesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Billing"
-        title="Invoices"
-        description="Invoice list with backend-aligned payment status, totals, and itemized drill-down."
+        eyebrow={isSuperAdmin ? "Invoice Support" : "Billing"}
+        title={isSuperAdmin ? "Invoice Support" : "Invoices"}
+        description={
+          isSuperAdmin
+            ? `Read-only support view for ${selectedSalon?.businessName ?? "the selected salon"} invoices.`
+            : "Invoice list with backend-aligned payment status, totals, and itemized drill-down."
+        }
         action={
-          <Button asChild>
-            <Link to={`${routes.invoices}/new`}>
-              <Plus className="h-4 w-4" />
-              New Invoice
-            </Link>
-          </Button>
+          isSuperAdmin ? (
+            <Button variant="outline" asChild>
+              <Link to={`${routes.salons}/${salonBusinessId}`}>Back to salon</Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to={`${routes.invoices}/new`}>
+                <Plus className="h-4 w-4" />
+                New Invoice
+              </Link>
+            </Button>
+          )
         }
       />
 
@@ -139,18 +170,7 @@ export function InvoicesPage() {
         onSearchChange={setSearch}
         placeholder="Search by invoice number, branch, customer, or appointment"
         filters={
-          <div className="grid w-full gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {user?.role === "SUPER_ADMIN" ? (
-              <Select
-                value={salonBusinessId}
-                onChange={(event) => setSalonBusinessId(event.target.value)}
-                placeholder="Filter by salon"
-                options={(salonsQuery.data ?? []).map((salon) => ({
-                  label: `${salon.businessName} (${salon.salonCode})`,
-                  value: salon.id,
-                }))}
-              />
-            ) : null}
+          <div className="grid w-full gap-3 sm:grid-cols-2 xl:grid-cols-2">
             <Select
               value={paymentStatus}
               onChange={(event) => setPaymentStatus(event.target.value)}
@@ -192,9 +212,11 @@ export function InvoicesPage() {
                 <Button size="sm" variant="outline" asChild>
                   <Link to={`${routes.invoices}/${record.id}`}>View</Link>
                 </Button>
-                <Button size="sm" variant="ghost" asChild>
-                  <Link to={`${routes.invoices}/${record.id}/edit`}>Edit</Link>
-                </Button>
+                {user?.role === "SALON_OWNER" || user?.role === "STAFF" ? (
+                  <Button size="sm" variant="ghost" asChild>
+                    <Link to={`${routes.invoices}/${record.id}/edit`}>Edit</Link>
+                  </Button>
+                ) : null}
               </div>
             ),
           },

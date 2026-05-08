@@ -94,6 +94,8 @@ export function ResourceDetailPage<TRecord, TForm extends Record<string, unknown
           ))}
         </div>
       </FormSection>
+
+      {resource.detailExtra ? resource.detailExtra(record, helpers, user) : null}
     </div>
   );
 }

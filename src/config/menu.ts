@@ -20,6 +20,7 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
+import { getResourceUiRoles, pageUiAccess } from "@/config/access";
 import { routes } from "@/config/routes";
 import type { Role } from "@/types/enums";
 
@@ -27,7 +28,7 @@ export interface MenuItem {
   label: string;
   to: string;
   icon: LucideIcon;
-  roles: Role[];
+  roles: readonly Role[];
 }
 
 export const menuItems: MenuItem[] = [
@@ -35,114 +36,114 @@ export const menuItems: MenuItem[] = [
     label: "Dashboard",
     to: routes.dashboard,
     icon: LayoutDashboard,
-    roles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF", "CUSTOMER"],
+    roles: pageUiAccess.dashboard,
   },
   {
     label: "Salons",
     to: routes.salons,
     icon: Store,
-    roles: ["SUPER_ADMIN"],
+    roles: getResourceUiRoles("salons", "list"),
   },
   {
     label: "My Salon",
     to: routes.mySalon,
     icon: Building2,
-    roles: ["SALON_OWNER"],
+    roles: pageUiAccess.mySalon,
   },
   {
-    label: "Create Owner",
-    to: routes.createOwner,
+    label: "Owners",
+    to: routes.owners,
     icon: Crown,
-    roles: ["SUPER_ADMIN"],
+    roles: pageUiAccess.owners,
   },
   {
     label: "Plans",
     to: routes.plans,
     icon: Sparkles,
-    roles: ["SUPER_ADMIN"],
+    roles: getResourceUiRoles("plans", "list"),
   },
   {
     label: "Subscriptions",
     to: routes.subscriptions,
     icon: ClipboardList,
-    roles: ["SUPER_ADMIN"],
+    roles: getResourceUiRoles("subscriptions", "list"),
   },
   {
     label: "Feature Access",
     to: routes.featureAccess,
     icon: ShieldCheck,
-    roles: ["SUPER_ADMIN", "SALON_OWNER"],
+    roles: pageUiAccess.featureAccess,
   },
   {
     label: "Branches",
     to: routes.branches,
     icon: ScanLine,
-    roles: ["SALON_OWNER"],
+    roles: getResourceUiRoles("branches", "list"),
   },
   {
     label: "Service Categories",
     to: routes.serviceCategories,
     icon: Settings2,
-    roles: ["SALON_OWNER"],
+    roles: getResourceUiRoles("serviceCategories", "list"),
   },
   {
     label: "Services",
     to: routes.services,
     icon: Scissors,
-    roles: ["SUPER_ADMIN", "SALON_OWNER"],
+    roles: getResourceUiRoles("services", "list"),
   },
   {
     label: "Customers",
     to: routes.customers,
     icon: Users,
-    roles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"],
+    roles: getResourceUiRoles("customers", "list"),
   },
   {
     label: "Staff",
     to: routes.staff,
     icon: UserCog,
-    roles: ["SUPER_ADMIN", "SALON_OWNER"],
+    roles: getResourceUiRoles("staff", "list"),
   },
   {
     label: "Appointments",
     to: routes.appointments,
     icon: CalendarClock,
-    roles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF", "CUSTOMER"],
+    roles: pageUiAccess.appointmentCreate,
   },
   {
     label: "Queue Tokens",
     to: routes.queueTokens,
     icon: Ticket,
-    roles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"],
+    roles: pageUiAccess.queueTokenCreate,
   },
   {
     label: "Invoices",
     to: routes.invoices,
     icon: WalletCards,
-    roles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"],
+    roles: pageUiAccess.invoiceCreate,
   },
   {
     label: "Payments",
     to: routes.payments,
     icon: CreditCard,
-    roles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"],
+    roles: getResourceUiRoles("payments", "create"),
   },
   {
     label: "Staff Earnings",
     to: routes.staffEarnings,
     icon: CircleDollarSign,
-    roles: ["SUPER_ADMIN", "SALON_OWNER"],
+    roles: pageUiAccess.staffEarnings,
   },
   {
     label: "My Earnings",
     to: routes.myEarnings,
     icon: BadgeIndianRupee,
-    roles: ["STAFF"],
+    roles: pageUiAccess.myEarnings,
   },
   {
     label: "Payroll",
     to: routes.payroll,
     icon: ListTodo,
-    roles: ["SALON_OWNER"],
+    roles: pageUiAccess.payroll,
   },
 ];

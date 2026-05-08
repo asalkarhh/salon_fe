@@ -3,6 +3,7 @@ import { ErrorState } from "@/components/common/ErrorState";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import { RoleGuard } from "@/components/common/RoleGuard";
+import { getResourceUiRoles, pageUiAccess } from "@/config/access";
 import { routes } from "@/config/routes";
 import { AppointmentDetailPage } from "@/features/appointments/AppointmentDetailPage";
 import { AppointmentFormPage } from "@/features/appointments/AppointmentFormPage";
@@ -14,7 +15,10 @@ import { FeatureAccessPage } from "@/features/feature-access/FeatureAccessPage";
 import { InvoiceDetailPage } from "@/features/invoices/InvoiceDetailPage";
 import { InvoiceFormPage } from "@/features/invoices/InvoiceFormPage";
 import { InvoicesPage } from "@/features/invoices/InvoicesPage";
-import { CreateOwnerPage } from "@/features/owners/CreateOwnerPage";
+import { OwnerDetailPage } from "@/features/owners/OwnerDetailPage";
+import { OwnerFormPage } from "@/features/owners/OwnerFormPage";
+import { OwnersPage } from "@/features/owners/OwnersPage";
+import { PaymentsPage } from "@/features/payments/PaymentsPage";
 import { QueueTokenDetailPage } from "@/features/queue-tokens/QueueTokenDetailPage";
 import { QueueTokenFormPage } from "@/features/queue-tokens/QueueTokenFormPage";
 import { QueueTokensPage } from "@/features/queue-tokens/QueueTokensPage";
@@ -25,6 +29,7 @@ import { getResource, type ResourceKey } from "@/features/resources/resourceDefi
 import { MySalonPage } from "@/features/salons/MySalonPage";
 import { MyEarningsPage } from "@/features/staff-earnings/MyEarningsPage";
 import { StaffEarningsPage } from "@/features/staff-earnings/StaffEarningsPage";
+import type { Role } from "@/types/enums";
 
 function NotFoundPage() {
   return (
@@ -38,7 +43,11 @@ function NotFoundPage() {
 }
 
 function ResourceListRoute({ resourceKey }: { resourceKey: ResourceKey }) {
-  return <ResourceListPage resource={getResource(resourceKey) as never} />;
+  return (
+    <RoleGuard roles={getResourceUiRoles(resourceKey, "list")}>
+      <ResourceListPage resource={getResource(resourceKey) as never} />
+    </RoleGuard>
+  );
 }
 
 function ResourceFormRoute({
@@ -48,11 +57,23 @@ function ResourceFormRoute({
   resourceKey: ResourceKey;
   mode: "create" | "edit";
 }) {
-  return <ResourceFormPage resource={getResource(resourceKey) as never} mode={mode} />;
+  return (
+    <RoleGuard roles={getResourceUiRoles(resourceKey, mode)}>
+      <ResourceFormPage resource={getResource(resourceKey) as never} mode={mode} />
+    </RoleGuard>
+  );
 }
 
 function ResourceDetailRoute({ resourceKey }: { resourceKey: ResourceKey }) {
-  return <ResourceDetailPage resource={getResource(resourceKey) as never} />;
+  return (
+    <RoleGuard roles={getResourceUiRoles(resourceKey, "detail")}>
+      <ResourceDetailPage resource={getResource(resourceKey) as never} />
+    </RoleGuard>
+  );
+}
+
+function guardElement(roles: readonly Role[], element: React.ReactNode) {
+  return <RoleGuard roles={roles}>{element}</RoleGuard>;
 }
 
 export function AppRouter() {
@@ -92,8 +113,24 @@ export function AppRouter() {
                   element: <ResourceFormRoute resourceKey="salons" mode="edit" />,
                 },
                 {
+                  path: routes.owners.slice(1),
+                  element: <OwnersPage />,
+                },
+                {
+                  path: `${routes.owners.slice(1)}/new`,
+                  element: <OwnerFormPage mode="create" />,
+                },
+                {
+                  path: `${routes.owners.slice(1)}/:id`,
+                  element: <OwnerDetailPage />,
+                },
+                {
+                  path: `${routes.owners.slice(1)}/:id/edit`,
+                  element: <OwnerFormPage mode="edit" />,
+                },
+                {
                   path: routes.createOwner.slice(1),
-                  element: <CreateOwnerPage />,
+                  element: <Navigate to={routes.owners} replace />,
                 },
                 {
                   path: routes.plans.slice(1),
@@ -107,11 +144,15 @@ export function AppRouter() {
                   path: `${routes.plans.slice(1)}/:id`,
                   element: <ResourceDetailRoute resourceKey="plans" />,
                 },
+                {
+                  path: `${routes.plans.slice(1)}/:id/edit`,
+                  element: <ResourceFormRoute resourceKey="plans" mode="edit" />,
+                },
               ],
             },
             {
               path: routes.mySalon.slice(1),
-              element: <MySalonPage />,
+              element: guardElement(pageUiAccess.mySalon, <MySalonPage />),
             },
             {
               path: routes.subscriptions.slice(1),
@@ -207,7 +248,7 @@ export function AppRouter() {
             },
             {
               path: routes.payments.slice(1),
-              element: <ResourceListRoute resourceKey="payments" />,
+              element: guardElement(pageUiAccess.payments, <PaymentsPage />),
             },
             {
               path: `${routes.payments.slice(1)}/new`,
@@ -223,67 +264,76 @@ export function AppRouter() {
             },
             {
               path: routes.staffEarnings.slice(1),
-              element: <StaffEarningsPage />,
+              element: guardElement(pageUiAccess.staffEarnings, <StaffEarningsPage />),
             },
             {
               path: routes.myEarnings.slice(1),
-              element: <MyEarningsPage />,
+              element: guardElement(pageUiAccess.myEarnings, <MyEarningsPage />),
             },
             {
               path: routes.payroll.slice(1),
-              element: <PayrollPage />,
+              element: guardElement(pageUiAccess.payroll, <PayrollPage />),
             },
             {
               path: routes.featureAccess.slice(1),
-              element: <FeatureAccessPage />,
+              element: guardElement(pageUiAccess.featureAccess, <FeatureAccessPage />),
             },
             {
               path: `${routes.featureAccess.slice(1)}/:salonBusinessId`,
-              element: <FeatureAccessPage />,
+              element: guardElement(pageUiAccess.featureAccess, <FeatureAccessPage />),
             },
             {
               path: routes.queueTokens.slice(1),
-              element: <QueueTokensPage />,
+              element: guardElement(pageUiAccess.queueTokens, <QueueTokensPage />),
             },
             {
               path: `${routes.queueTokens.slice(1)}/new`,
-              element: <QueueTokenFormPage />,
+              element: guardElement(pageUiAccess.queueTokenCreate, <QueueTokenFormPage />),
             },
             {
               path: `${routes.queueTokens.slice(1)}/:id`,
-              element: <QueueTokenDetailPage />,
+              element: guardElement(pageUiAccess.queueTokenDetail, <QueueTokenDetailPage />),
             },
             {
               path: routes.appointments.slice(1),
-              element: <AppointmentsPage />,
+              element: guardElement(pageUiAccess.appointments, <AppointmentsPage />),
             },
             {
               path: `${routes.appointments.slice(1)}/new`,
-              element: <AppointmentFormPage mode="create" />,
+              element: guardElement(
+                pageUiAccess.appointmentCreate,
+                <AppointmentFormPage mode="create" />,
+              ),
             },
             {
               path: `${routes.appointments.slice(1)}/:id`,
-              element: <AppointmentDetailPage />,
+              element: guardElement(
+                pageUiAccess.appointmentDetail,
+                <AppointmentDetailPage />,
+              ),
             },
             {
               path: `${routes.appointments.slice(1)}/:id/edit`,
-              element: <AppointmentFormPage mode="edit" />,
+              element: guardElement(
+                pageUiAccess.appointmentEdit,
+                <AppointmentFormPage mode="edit" />,
+              ),
             },
             {
               path: routes.invoices.slice(1),
-              element: <InvoicesPage />,
+              element: guardElement(pageUiAccess.invoices, <InvoicesPage />),
             },
             {
               path: `${routes.invoices.slice(1)}/new`,
-              element: <InvoiceFormPage mode="create" />,
+              element: guardElement(pageUiAccess.invoiceCreate, <InvoiceFormPage mode="create" />),
             },
             {
               path: `${routes.invoices.slice(1)}/:id`,
-              element: <InvoiceDetailPage />,
+              element: guardElement(pageUiAccess.invoiceDetail, <InvoiceDetailPage />),
             },
             {
               path: `${routes.invoices.slice(1)}/:id/edit`,
-              element: <InvoiceFormPage mode="edit" />,
+              element: guardElement(pageUiAccess.invoiceEdit, <InvoiceFormPage mode="edit" />),
             },
             {
               path: "*",
