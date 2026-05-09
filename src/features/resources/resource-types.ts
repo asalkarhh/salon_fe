@@ -101,6 +101,7 @@ export interface ResourceDefinition<TRecord, TForm> {
   roles: Role[];
   createRoles?: Role[];
   editRoles?: Role[];
+  toggleRoles?: Role[];
   searchPlaceholder?: string;
   listPath: string;
   createPath?: string;

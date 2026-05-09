@@ -99,6 +99,54 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
     });
   }, [filters, helpers, listQuery.data, resource, search]);
 
+  const canView = Boolean(resource.detailPath);
+  const canEdit =
+    Boolean(resource.editPath) &&
+    (!resource.editRoles || resource.editRoles.includes(user.role as never));
+  const toggleRoles = resource.toggleRoles ?? resource.editRoles;
+  const canToggle =
+    Boolean(resource.toggleActive && resource.activateMutation && resource.deactivateMutation) &&
+    (!toggleRoles || toggleRoles.includes(user.role as never));
+
+  const renderActionButtons = (record: TRecord) => {
+    const id = String((record as { id: string }).id);
+    const toggle = resource.toggleActive;
+    const isActive = toggle?.isActive(record);
+
+    return (
+      <>
+        {resource.detailPath ? (
+          <Button size="sm" variant="outline" asChild>
+            <Link to={resource.detailPath(id)}>View</Link>
+          </Button>
+        ) : null}
+        {canEdit && resource.editPath ? (
+          <Button size="sm" variant="ghost" asChild>
+            <Link to={resource.editPath(id)}>Edit</Link>
+          </Button>
+        ) : null}
+        {canToggle && toggle && resource.activateMutation && resource.deactivateMutation ? (
+          <ConfirmDialog
+            title={`${isActive ? toggle.inactiveLabel : toggle.activeLabel} ${resource.singular}`}
+            description={`This will ${isActive ? "change" : "restore"} the current backend status for this ${resource.singular.toLowerCase()}.`}
+            actionLabel={isActive ? toggle.inactiveLabel : toggle.activeLabel}
+            onConfirm={() =>
+              isActive
+                ? deactivateMutation.mutate(id)
+                : activateMutation.mutate(id)
+            }
+            trigger={(
+              <Button size="sm" variant="outline">
+                {isActive ? toggle.inactiveLabel : toggle.activeLabel}
+              </Button>
+            )}
+            destructive={Boolean(isActive)}
+          />
+        ) : null}
+      </>
+    );
+  };
+
   const columns = useMemo(() => {
     const baseColumns = resource.columns(helpers).map((column) => ({
       id: column.id,
@@ -107,14 +155,7 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
       sortingValue: (record: TRecord) => column.sortingValue?.(record, helpers) ?? "",
     }));
 
-    const canEdit =
-      Boolean(resource.editPath) &&
-      (!resource.editRoles || resource.editRoles.includes(user.role as never));
-    const canToggle =
-      Boolean(resource.toggleActive && resource.activateMutation && resource.deactivateMutation) &&
-      (!resource.editRoles || resource.editRoles.includes(user.role as never));
-
-    if (!resource.detailPath && !canEdit && !canToggle) {
+    if (!canView && !canEdit && !canToggle) {
       return baseColumns;
     }
 
@@ -124,46 +165,15 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
         id: "actions",
         header: "Actions",
         cell: (record: TRecord) => {
-          const id = String((record as { id: string }).id);
-          const toggle = resource.toggleActive;
-          const isActive = toggle?.isActive(record);
-
           return (
             <div className="flex flex-wrap gap-2">
-              {resource.detailPath ? (
-                <Button size="sm" variant="outline" asChild>
-                  <Link to={resource.detailPath(id)}>View</Link>
-                </Button>
-              ) : null}
-              {canEdit && resource.editPath ? (
-                <Button size="sm" variant="ghost" asChild>
-                  <Link to={resource.editPath(id)}>Edit</Link>
-                </Button>
-              ) : null}
-              {canToggle && toggle && resource.activateMutation && resource.deactivateMutation ? (
-                <ConfirmDialog
-                  title={`${isActive ? toggle.inactiveLabel : toggle.activeLabel} ${resource.singular}`}
-                  description={`This will ${isActive ? "change" : "restore"} the current backend status for this ${resource.singular.toLowerCase()}.`}
-                  actionLabel={isActive ? toggle.inactiveLabel : toggle.activeLabel}
-                  onConfirm={() =>
-                    isActive
-                      ? deactivateMutation.mutate(id)
-                      : activateMutation.mutate(id)
-                  }
-                  trigger={
-                    <Button size="sm" variant="outline">
-                      {isActive ? toggle.inactiveLabel : toggle.activeLabel}
-                    </Button>
-                  }
-                  destructive={Boolean(isActive)}
-                />
-              ) : null}
+              {renderActionButtons(record)}
             </div>
           );
         },
       },
     ];
-  }, [activateMutation, deactivateMutation, helpers, resource, user.role]);
+  }, [canEdit, canToggle, canView, helpers, resource, renderActionButtons]);
 
   return (
     <div className="space-y-6">
@@ -264,6 +274,15 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
           emptyTitle={`No ${resource.title.toLowerCase()} yet`}
           emptyDescription={`Create your first ${resource.singular.toLowerCase()} or adjust the current filters.`}
           mobileCard={(record) => resource.mobileCard(record, helpers)}
+          mobileActions={
+            canView || canEdit || canToggle
+              ? (record) => (
+                  <div className="flex flex-wrap gap-2 rounded-2xl border border-white/70 bg-white/80 p-4 shadow-panel">
+                    {renderActionButtons(record)}
+                  </div>
+                )
+              : undefined
+          }
         />
       )}
     </div>

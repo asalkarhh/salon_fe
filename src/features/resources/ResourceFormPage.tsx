@@ -17,6 +17,8 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { parseApiError } from "@/lib/api";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { logValidationFailure } from "@/lib/form-logging";
+import { logger, summarizeError } from "@/lib/logger";
 import { useLookupResults } from "@/features/resources/resource-helpers";
 import type { ResourceDefinition } from "@/features/resources/resource-types";
 
@@ -29,6 +31,7 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
   resource,
   mode,
 }: ResourceFormPageProps<TRecord, TForm>) {
+  const formName = `${resource.key}-${mode}`;
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -69,11 +72,15 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
   useEffect(() => {
     if (recordQuery.data && resource.toFormValues) {
       const nextValues = resource.toFormValues(recordQuery.data, user) as Record<string, unknown>;
+      logger.debug("forms", "resource_record_loaded", {
+        formName,
+        recordId: id,
+      });
       previousValuesRef.current = { ...nextValues };
       skipDependentResetRef.current = true;
       form.reset(nextValues);
     }
-  }, [form, recordQuery.data, resource, user]);
+  }, [form, formName, id, recordQuery.data, resource, user]);
 
   const values = form.watch();
 
@@ -101,10 +108,17 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
         if (targetField === field.name || targetValue === undefined || targetValue === "") {
           continue;
         }
+        // Dependent lookup fields are reset whenever their upstream selector
+        // changes so stale backend IDs never leak into a submission.
         form.setValue(targetField as never, "" as never, {
           shouldDirty: true,
           shouldTouch: true,
           shouldValidate: true,
+        });
+        logger.debug("forms", "dependent_field_reset", {
+          formName,
+          changedField: field.name,
+          resetField: targetField,
         });
       }
     }
@@ -135,18 +149,34 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
       return resource.updateMutation(id, payload, user);
     },
     onSuccess: (savedRecord) => {
+      const savedId = String((savedRecord as { id: string }).id);
+      logger.info("forms", "resource_submission_succeeded", {
+        formName,
+        recordId: savedId,
+      });
       toast.success(`${resource.singular} saved successfully`);
       void queryClient.invalidateQueries({ queryKey: [resource.key] });
       resource.extraInvalidateKeys?.forEach((queryKey) => {
         void queryClient.invalidateQueries({ queryKey: [queryKey] });
       });
-      const savedId = String((savedRecord as { id: string }).id);
       navigate(resource.detailPath?.(savedId) ?? resource.listPath);
     },
-    onError: (error) => toast.error(parseApiError(error)),
+    onError: (error) => {
+      logger.error("forms", "resource_submission_failed", {
+        formName,
+        recordId: id,
+        error: summarizeError(error),
+      });
+      toast.error(parseApiError(error));
+    },
   });
 
   const onSubmit = (formValues: Record<string, unknown>) => {
+    logger.info("forms", "resource_submission_started", {
+      formName,
+      recordId: id,
+      fieldCount: Object.keys(formValues).length,
+    });
     saveMutation.mutate(resource.toPayload(formValues as TForm, user));
   };
 
@@ -173,7 +203,12 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
         description={resource.description}
       />
 
-      <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+      <form
+        className="space-y-6"
+        onSubmit={form.handleSubmit(onSubmit, (errors) =>
+          logValidationFailure(formName, errors as Record<string, never>),
+        )}
+      >
         <FormSection
           title={`${resource.singular} details`}
           description="This form maps directly to the backend DTO field names and validations."

@@ -96,7 +96,7 @@ const planLookup: LookupDefinition<PlanResponse> = {
   key: "plans",
   queryKey: () => ["lookup", "plans"],
   queryFn: async () => (await api.get<PlanResponse[]>("/api/subscriptions/plans")).data,
-  toOption: (item) => lookupOption(item, `${item.name} • ${formatCurrency(item.monthlyPrice)}`),
+  toOption: (item) => lookupOption(item, `${item.name} â€¢ ${formatCurrency(item.monthlyPrice)}`),
 };
 
 const branchLookup: LookupDefinition<BranchResponse> = {
@@ -161,7 +161,7 @@ export const serviceLookup: LookupDefinition<ServiceResponse> = {
         : undefined;
     return (await api.get<ServiceResponse[]>("/api/services", { params })).data;
   },
-  toOption: (item) => lookupOption(item, `${item.name} • ${formatCurrency(item.price)}`),
+  toOption: (item) => lookupOption(item, `${item.name} â€¢ ${formatCurrency(item.price)}`),
 };
 
 export const customerLookup: LookupDefinition<CustomerResponse> = {
@@ -431,8 +431,8 @@ export const resourceRegistry = {
         header: "Contact",
         cell: (record) => (
           <div className="space-y-1">
-            <p>{record.email ?? "—"}</p>
-            <p className="text-xs text-muted-foreground">{record.phone ?? "—"}</p>
+            <p>{record.email ?? "â€”"}</p>
+            <p className="text-xs text-muted-foreground">{record.phone ?? "â€”"}</p>
           </div>
         ),
       },
@@ -452,13 +452,13 @@ export const resourceRegistry = {
       { label: "Salon Code", value: (record) => record.salonCode },
       { label: "Business Name", value: (record) => record.businessName },
       { label: "Owner", value: (record) => `${record.ownerName} (${record.ownerUsername})` },
-      { label: "Email", value: (record) => record.email ?? "—" },
-      { label: "Phone", value: (record) => record.phone ?? "—" },
-      { label: "Address", value: (record) => record.address ?? "—" },
-      { label: "City", value: (record) => record.city ?? "—" },
-      { label: "State", value: (record) => record.state ?? "—" },
-      { label: "Country", value: (record) => record.country ?? "—" },
-      { label: "Pincode", value: (record) => record.pincode ?? "—" },
+      { label: "Email", value: (record) => record.email ?? "â€”" },
+      { label: "Phone", value: (record) => record.phone ?? "â€”" },
+      { label: "Address", value: (record) => record.address ?? "â€”" },
+      { label: "City", value: (record) => record.city ?? "â€”" },
+      { label: "State", value: (record) => record.state ?? "â€”" },
+      { label: "Country", value: (record) => record.country ?? "â€”" },
+      { label: "Pincode", value: (record) => record.pincode ?? "â€”" },
       { label: "Status", value: (record) => <StatusBadge status={record.isActive ? "ACTIVE" : "SUSPENDED"} /> },
       { label: "Created", value: (record) => formatDateTime(record.createdAt) },
     ],
@@ -542,18 +542,18 @@ export const resourceRegistry = {
       { id: "name", header: "Plan", cell: (record) => record.name, sortingValue: (record) => record.name },
       { id: "monthlyPrice", header: "Monthly", cell: (record) => formatCurrency(record.monthlyPrice), sortingValue: (record) => record.monthlyPrice },
       { id: "yearlyPrice", header: "Yearly", cell: (record) => formatCurrency(record.yearlyPrice), sortingValue: (record) => record.yearlyPrice ?? 0 },
-      { id: "limits", header: "Limits", cell: (record) => `${record.maxBranches ?? "∞"} branches / ${record.maxStaff ?? "∞"} staff` },
+      { id: "limits", header: "Limits", cell: (record) => `${record.maxBranches ?? "âˆž"} branches / ${record.maxStaff ?? "âˆž"} staff` },
       { id: "status", header: "Status", cell: (record) => <StatusBadge status={record.active ? "ACTIVE" : "INACTIVE"} /> },
     ],
     mobileCard: (record) =>
       detailCard(record.name, [
         <span key="monthly">{formatCurrency(record.monthlyPrice)} monthly</span>,
-        <span key="limits">{record.maxBranches ?? "∞"} branches / {record.maxStaff ?? "∞"} staff</span>,
+        <span key="limits">{record.maxBranches ?? "âˆž"} branches / {record.maxStaff ?? "âˆž"} staff</span>,
         <StatusBadge key="status" status={record.active ? "ACTIVE" : "INACTIVE"} />,
       ]),
     detailFields: () => [
       { label: "Name", value: (record) => record.name },
-      { label: "Description", value: (record) => record.description ?? "—" },
+      { label: "Description", value: (record) => record.description ?? "â€”" },
       { label: "Monthly Price", value: (record) => formatCurrency(record.monthlyPrice) },
       { label: "Yearly Price", value: (record) => formatCurrency(record.yearlyPrice) },
       { label: "Max Branches", value: (record) => record.maxBranches ?? "Unlimited" },
@@ -647,7 +647,7 @@ export const resourceRegistry = {
         header: "Status Control",
         cell: (record) => <SubscriptionStatusActions subscription={record} compact />,
       },
-      { id: "window", header: "Dates", cell: (record) => `${formatDate(record.startDate)} → ${formatDate(record.endDate)}` },
+      { id: "window", header: "Dates", cell: (record) => `${formatDate(record.startDate)} â†’ ${formatDate(record.endDate)}` },
     ],
     mobileCard: (record, helpers) =>
       detailCard(helpers.lookupLabel("salons", record.salonBusinessId), [
@@ -756,25 +756,25 @@ export const resourceRegistry = {
     columns: () => [
       { id: "branchName", header: "Branch", cell: (record) => record.branchName, sortingValue: (record) => record.branchName },
       { id: "salon", header: "Salon", cell: (record) => record.salonName, sortingValue: (record) => record.salonName },
-      { id: "phone", header: "Phone", cell: (record) => record.phone ?? "—" },
-      { id: "city", header: "Location", cell: (record) => `${record.city ?? "—"}, ${record.state ?? "—"}` },
+      { id: "phone", header: "Phone", cell: (record) => record.phone ?? "â€”" },
+      { id: "city", header: "Location", cell: (record) => `${record.city ?? "â€”"}, ${record.state ?? "â€”"}` },
       { id: "status", header: "Status", cell: (record) => <StatusBadge status={record.isActive ? "ACTIVE" : "INACTIVE"} /> },
     ],
     mobileCard: (record) =>
       detailCard(record.branchName, [
         <span key="salon">{record.salonName}</span>,
-        <span key="location">{record.city ?? "—"}, {record.state ?? "—"}</span>,
-        <span key="phone">{record.phone ?? "—"}</span>,
+        <span key="location">{record.city ?? "â€”"}, {record.state ?? "â€”"}</span>,
+        <span key="phone">{record.phone ?? "â€”"}</span>,
         <StatusBadge key="status" status={record.isActive ? "ACTIVE" : "INACTIVE"} />,
       ]),
     detailFields: () => [
       { label: "Branch Name", value: (record) => record.branchName },
       { label: "Salon", value: (record) => `${record.salonName} (${record.salonCode})` },
-      { label: "Phone", value: (record) => record.phone ?? "—" },
-      { label: "Address", value: (record) => record.address ?? "—" },
-      { label: "City", value: (record) => record.city ?? "—" },
-      { label: "State", value: (record) => record.state ?? "—" },
-      { label: "Pincode", value: (record) => record.pincode ?? "—" },
+      { label: "Phone", value: (record) => record.phone ?? "â€”" },
+      { label: "Address", value: (record) => record.address ?? "â€”" },
+      { label: "City", value: (record) => record.city ?? "â€”" },
+      { label: "State", value: (record) => record.state ?? "â€”" },
+      { label: "Pincode", value: (record) => record.pincode ?? "â€”" },
       { label: "Status", value: (record) => <StatusBadge status={record.isActive ? "ACTIVE" : "INACTIVE"} /> },
     ],
     searchValues: (record) => [
@@ -796,7 +796,7 @@ export const resourceRegistry = {
     editRoles: ["SALON_OWNER"] satisfies Role[],
     listPath: routes.serviceCategories,
     createPath: `${routes.serviceCategories}/new`,
-    detailPath: (id) => `${routes.serviceCategories}/${id}/edit`,
+    detailPath: (id) => `${routes.serviceCategories}/${id}`,
     editPath: (id) => `${routes.serviceCategories}/${id}/edit`,
     schema: serviceCategorySchema,
     defaultValues: () => ({
@@ -820,16 +820,8 @@ export const resourceRegistry = {
     ],
     listQuery: async () =>
       (await api.get<ServiceCategoryResponse[]>("/api/services/categories")).data,
-    getQuery: async (id, user) => {
-      const list = user.role === "SUPER_ADMIN"
-        ? []
-        : (await api.get<ServiceCategoryResponse[]>("/api/services/categories")).data;
-      const record = list.find((item) => item.id === id);
-      if (!record) {
-        throw new Error("Service category not found in the current salon scope.");
-      }
-      return record;
-    },
+    getQuery: async (id) =>
+      (await api.get<ServiceCategoryResponse>(`/api/services/categories/${id}`)).data,
     createMutation: async (payload) =>
       (await api.post<ServiceCategoryResponse>("/api/services/categories", payload)).data,
     updateMutation: async (id, payload) =>
@@ -843,20 +835,20 @@ export const resourceRegistry = {
     },
     columns: () => [
       { id: "name", header: "Category", cell: (record) => record.name },
-      { id: "description", header: "Description", cell: (record) => record.description ?? "—" },
-      { id: "displayOrder", header: "Order", cell: (record) => record.displayOrder ?? "—" },
+      { id: "description", header: "Description", cell: (record) => record.description ?? "â€”" },
+      { id: "displayOrder", header: "Order", cell: (record) => record.displayOrder ?? "â€”" },
       { id: "status", header: "Status", cell: (record) => <StatusBadge status={record.active ? "ACTIVE" : "INACTIVE"} /> },
     ],
     mobileCard: (record) =>
       detailCard(record.name, [
         <span key="description">{record.description ?? "No description"}</span>,
-        <span key="order">Order: {record.displayOrder ?? "—"}</span>,
+        <span key="order">Order: {record.displayOrder ?? "â€”"}</span>,
         <StatusBadge key="status" status={record.active ? "ACTIVE" : "INACTIVE"} />,
       ]),
     detailFields: () => [
       { label: "Name", value: (record) => record.name },
-      { label: "Description", value: (record) => record.description ?? "—" },
-      { label: "Display Order", value: (record) => record.displayOrder ?? "—" },
+      { label: "Description", value: (record) => record.description ?? "â€”" },
+      { label: "Display Order", value: (record) => record.displayOrder ?? "â€”" },
       { label: "Status", value: (record) => <StatusBadge status={record.active ? "ACTIVE" : "INACTIVE"} /> },
     ],
     searchValues: (record) => [record.name, record.description ?? ""],
@@ -954,13 +946,13 @@ export const resourceRegistry = {
     mobileCard: (record, helpers) =>
       detailCard(record.name, [
         <span key="category">{helpers.lookupLabel("serviceCategories", record.serviceCategoryId)}</span>,
-        <span key="price">{formatCurrency(record.price)} • {record.durationMinutes} mins</span>,
+        <span key="price">{formatCurrency(record.price)} â€¢ {record.durationMinutes} mins</span>,
         <StatusBadge key="status" status={record.active ? "ACTIVE" : "INACTIVE"} />,
       ]),
     detailFields: (helpers) => [
       { label: "Name", value: (record) => record.name },
       { label: "Category", value: (record) => helpers.lookupLabel("serviceCategories", record.serviceCategoryId) },
-      { label: "Description", value: (record) => record.description ?? "—" },
+      { label: "Description", value: (record) => record.description ?? "â€”" },
       { label: "Price", value: (record) => formatCurrency(record.price) },
       { label: "Duration", value: (record) => `${record.durationMinutes} minutes` },
       { label: "Status", value: (record) => <StatusBadge status={record.active ? "ACTIVE" : "INACTIVE"} /> },
@@ -980,6 +972,7 @@ export const resourceRegistry = {
     roles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"] satisfies Role[],
     createRoles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"] satisfies Role[],
     editRoles: ["SUPER_ADMIN", "SALON_OWNER", "STAFF"] satisfies Role[],
+    toggleRoles: ["SUPER_ADMIN", "SALON_OWNER"] satisfies Role[],
     listPath: routes.customers,
     createPath: `${routes.customers}/new`,
     detailPath: (id) => `${routes.customers}/${id}`,
@@ -1038,6 +1031,13 @@ export const resourceRegistry = {
       (await api.post<CustomerResponse>("/api/customers", payload)).data,
     updateMutation: async (id, payload) =>
       (await api.put<CustomerResponse>(`/api/customers/${id}`, payload)).data,
+    activateMutation: async (id) => (await api.patch(`/api/customers/${id}/activate`)).data,
+    deactivateMutation: async (id) => (await api.patch(`/api/customers/${id}/deactivate`)).data,
+    toggleActive: {
+      isActive: (record) => record.active,
+      activeLabel: "Activate",
+      inactiveLabel: "Deactivate",
+    },
     columns: (helpers) => [
       {
         id: "name",
@@ -1046,23 +1046,26 @@ export const resourceRegistry = {
         sortingValue: (record) => `${record.firstName} ${record.lastName ?? ""}`.trim(),
       },
       { id: "phone", header: "Phone", cell: (record) => record.phone },
-      { id: "email", header: "Email", cell: (record) => record.email ?? "—" },
+      { id: "email", header: "Email", cell: (record) => record.email ?? "-" },
       { id: "salon", header: "Salon", cell: (record) => helpers.lookupLabel("salons", record.salonBusinessId) },
+      { id: "status", header: "Status", cell: (record) => <StatusBadge status={record.active ? "ACTIVE" : "INACTIVE"} /> },
     ],
     mobileCard: (record) =>
       detailCard(`${record.firstName} ${record.lastName ?? ""}`.trim(), [
         <span key="phone">{record.phone}</span>,
-        <span key="email">{record.email ?? "—"}</span>,
+        <span key="email">{record.email ?? "-"}</span>,
         <span key="dob">{formatDate(record.dateOfBirth)}</span>,
+        <StatusBadge key="status" status={record.active ? "ACTIVE" : "INACTIVE"} />,
       ]),
     detailFields: () => [
       { label: "First Name", value: (record) => record.firstName },
-      { label: "Last Name", value: (record) => record.lastName ?? "—" },
-      { label: "Email", value: (record) => record.email ?? "—" },
+      { label: "Last Name", value: (record) => record.lastName ?? "-" },
+      { label: "Email", value: (record) => record.email ?? "-" },
       { label: "Phone", value: (record) => record.phone },
-      { label: "Gender", value: (record) => record.gender ?? "—" },
+      { label: "Gender", value: (record) => record.gender ?? "-" },
       { label: "Date Of Birth", value: (record) => formatDate(record.dateOfBirth) },
-      { label: "Notes", value: (record) => record.notes ?? "—" },
+      { label: "Notes", value: (record) => record.notes ?? "-" },
+      { label: "Status", value: (record) => <StatusBadge status={record.active ? "ACTIVE" : "INACTIVE"} /> },
       { label: "Updated", value: (record) => formatDateTime(record.updatedAt) },
     ],
     searchValues: (record) => [
@@ -1216,12 +1219,12 @@ export const resourceRegistry = {
       { label: "Phone", value: (record) => record.phone ?? "-" },
       { label: "Salon", value: (record) => `${record.salonName} (${record.salonCode})` },
       { label: "Branch", value: (record) => record.branchName ?? "Unassigned" },
-      { label: "Designation", value: (record) => record.designation ?? "—" },
-      { label: "Bio", value: (record) => record.bio ?? "—" },
+      { label: "Designation", value: (record) => record.designation ?? "â€”" },
+      { label: "Bio", value: (record) => record.bio ?? "â€”" },
       { label: "Compensation Type", value: (record) => labelize(record.compensationType ?? "FIXED_SALARY") },
       { label: "Base Salary", value: (record) => formatCurrency(record.baseSalary) },
-      { label: "Revenue Share %", value: (record) => record.revenueSharePercentage ?? "—" },
-      { label: "Commission %", value: (record) => record.commissionPercentage ?? "—" },
+      { label: "Revenue Share %", value: (record) => record.revenueSharePercentage ?? "â€”" },
+      { label: "Commission %", value: (record) => record.commissionPercentage ?? "â€”" },
       { label: "Hourly Rate", value: (record) => formatCurrency(record.hourlyRate) },
       { label: "Hire Date", value: (record) => formatDate(record.hireDate) },
     ],
@@ -1299,7 +1302,7 @@ export const resourceRegistry = {
       { label: "Amount", value: (record) => formatCurrency(record.amount) },
       { label: "Payment Method", value: (record) => record.paymentMethod },
       { label: "Status", value: (record) => <StatusBadge status={record.status} /> },
-      { label: "Transaction Reference", value: (record) => record.transactionReference ?? "—" },
+      { label: "Transaction Reference", value: (record) => record.transactionReference ?? "â€”" },
       { label: "Paid At", value: (record) => formatDateTime(record.paidAt) },
       { label: "Created", value: (record) => formatDateTime(record.createdAt) },
     ],
@@ -1317,3 +1320,4 @@ export type ResourceKey = keyof typeof resourceRegistry;
 export function getResource(key: ResourceKey) {
   return resourceRegistry[key];
 }
+

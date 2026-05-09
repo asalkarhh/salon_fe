@@ -19,6 +19,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, parseApiError } from "@/lib/api";
 import { routes } from "@/config/routes";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { logValidationFailure } from "@/lib/form-logging";
+import { logger, summarizeError } from "@/lib/logger";
 import { toSalonSelectOption } from "@/lib/select-options";
 import { formatCurrency } from "@/lib/utils";
 import type {
@@ -53,6 +55,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
+  const formName = `appointments-${mode}`;
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -109,6 +112,10 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
 
   useEffect(() => {
     if (recordQuery.data) {
+      logger.debug("forms", "appointment_record_loaded", {
+        formName,
+        recordId: id,
+      });
       form.reset({
         salonBusinessId: recordQuery.data.salonBusinessId,
         branchId: recordQuery.data.branchId,
@@ -132,6 +139,10 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
   const serviceRows = form.watch("services");
 
   const handleSalonChange = (salonBusinessId: string) => {
+    logger.debug("forms", "appointment_salon_changed", {
+      formName,
+      recordId: id,
+    });
     form.setValue("salonBusinessId", salonBusinessId, {
       shouldDirty: true,
       shouldTouch: true,
@@ -191,11 +202,22 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
       return (await api.put<AppointmentResponse>(`/api/appointments/${id}`, payload)).data;
     },
     onSuccess: (response) => {
+      logger.info("forms", "appointment_submission_succeeded", {
+        formName,
+        recordId: response.id,
+      });
       toast.success("Appointment saved");
       void queryClient.invalidateQueries({ queryKey: ["appointments"] });
       navigate(`${routes.appointments}/${response.id}`);
     },
-    onError: (error) => toast.error(parseApiError(error)),
+    onError: (error) => {
+      logger.error("forms", "appointment_submission_failed", {
+        formName,
+        recordId: id,
+        error: summarizeError(error),
+      });
+      toast.error(parseApiError(error));
+    },
   });
 
   if (
@@ -242,23 +264,31 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
 
       <form
         className="space-y-6"
-        onSubmit={form.handleSubmit((values) =>
-          saveMutation.mutate({
-            salonBusinessId: values.salonBusinessId || undefined,
-            branchId: values.branchId,
-            customerProfileId: values.customerProfileId,
-            staffProfileId: values.staffProfileId,
-            appointmentDate: values.appointmentDate,
-            startTime: values.startTime.length === 5 ? `${values.startTime}:00` : values.startTime,
-            endTime: values.endTime
-              ? values.endTime.length === 5
-                ? `${values.endTime}:00`
-                : values.endTime
-              : undefined,
-            status: (values.status || undefined) as AppointmentRequest["status"],
-            notes: values.notes || undefined,
-            services: values.services,
-          }),
+        onSubmit={form.handleSubmit(
+          (values) => {
+            logger.info("forms", "appointment_submission_started", {
+              formName,
+              recordId: id,
+              serviceCount: values.services.length,
+            });
+            saveMutation.mutate({
+              salonBusinessId: values.salonBusinessId || undefined,
+              branchId: values.branchId,
+              customerProfileId: values.customerProfileId,
+              staffProfileId: values.staffProfileId,
+              appointmentDate: values.appointmentDate,
+              startTime: values.startTime.length === 5 ? `${values.startTime}:00` : values.startTime,
+              endTime: values.endTime
+                ? values.endTime.length === 5
+                  ? `${values.endTime}:00`
+                  : values.endTime
+                : undefined,
+              status: (values.status || undefined) as AppointmentRequest["status"],
+              notes: values.notes || undefined,
+              services: values.services,
+            });
+          },
+          (errors) => logValidationFailure(formName, errors as Record<string, never>),
         )}
       >
         <FormSection title="Appointment details">

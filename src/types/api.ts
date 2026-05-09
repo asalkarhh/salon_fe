@@ -311,6 +311,7 @@ export interface CustomerResponse {
   gender: string | null;
   dateOfBirth: string | null;
   notes: string | null;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -616,5 +617,6 @@ export interface BackendErrorResponse {
   error: string;
   message: string;
   path: string;
+  requestId?: string;
   validationErrors?: Record<string, string> | null;
 }

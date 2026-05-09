@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { api, parseApiError } from "@/lib/api";
 import { APP_NAME } from "@/lib/constants";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { logValidationFailure } from "@/lib/form-logging";
+import { logger, summarizeError } from "@/lib/logger";
 import type { CurrentUserResponse, LoginRequest, LoginResponse } from "@/types/api";
 
 const loginSchema = z.object({
@@ -37,6 +39,9 @@ export function LoginPage() {
   const onSubmit = async (values: LoginRequest) => {
     setSubmitting(true);
     try {
+      // Credentials are intentionally excluded from logs; we only record the
+      // authentication flow around the request.
+      logger.info("auth", "login_submission_started");
       const loginResponse = await api.post<LoginResponse>("/api/auth/login", values);
       const meResponse = await api.get<CurrentUserResponse>("/api/auth/me", {
         headers: {
@@ -44,9 +49,16 @@ export function LoginPage() {
         },
       });
       login(loginResponse.data, meResponse.data);
+      logger.info("auth", "login_submission_succeeded", {
+        userId: meResponse.data.userId,
+        role: meResponse.data.role,
+      });
       toast.success(`Welcome back, ${meResponse.data.fullName}`);
       navigate("/dashboard", { replace: true });
     } catch (error) {
+      logger.warn("auth", "login_submission_failed", {
+        error: summarizeError(error),
+      });
       toast.error(parseApiError(error));
     } finally {
       setSubmitting(false);
@@ -105,7 +117,12 @@ export function LoginPage() {
               </div>
             </div>
 
-            <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
+            <form
+              className="space-y-5"
+              onSubmit={form.handleSubmit(onSubmit, (errors) =>
+                logValidationFailure("login", errors as Record<string, never>),
+              )}
+            >
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground" htmlFor="username">
                   Username

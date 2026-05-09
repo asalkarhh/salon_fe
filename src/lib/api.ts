@@ -1,8 +1,18 @@
-import axios from "axios";
+import axios, { AxiosHeaders, type InternalAxiosRequestConfig } from "axios";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/lib/constants";
 import { clearAuthState, loadAuthState } from "@/lib/auth";
+import { createRequestId, logger, summarizeError } from "@/lib/logger";
 import type { BackendErrorResponse } from "@/types/api";
+
+interface RequestMetadata {
+  requestId: string;
+  startedAt: number;
+}
+
+type LoggedRequestConfig = InternalAxiosRequestConfig & {
+  metadata?: RequestMetadata;
+};
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,18 +21,94 @@ export const api = axios.create({
   },
 });
 
+function setHeader(
+  config: InternalAxiosRequestConfig,
+  name: string,
+  value: string,
+) {
+  if (!config.headers) {
+    config.headers = new AxiosHeaders();
+  }
+
+  if ("set" in config.headers && typeof config.headers.set === "function") {
+    config.headers.set(name, value);
+    return;
+  }
+
+  (config.headers as Record<string, string>)[name] = value;
+}
+
+function resolveRequestMetadata(config: InternalAxiosRequestConfig) {
+  const loggedConfig = config as LoggedRequestConfig;
+  if (!loggedConfig.metadata) {
+    loggedConfig.metadata = {
+      requestId: createRequestId("api"),
+      startedAt: performance.now(),
+    };
+  }
+  return loggedConfig.metadata;
+}
+
+function resolveDuration(metadata?: RequestMetadata) {
+  return metadata ? Math.round(performance.now() - metadata.startedAt) : undefined;
+}
+
+function isLoginRequest(config?: InternalAxiosRequestConfig) {
+  return Boolean(config?.url?.includes("/api/auth/login"));
+}
+
+function resolveFailureLogger(status?: number) {
+  return status && status < 500 ? logger.warn : logger.error;
+}
+
 api.interceptors.request.use((config) => {
+  const metadata = resolveRequestMetadata(config);
   const { token } = loadAuthState();
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    setHeader(config, "Authorization", `Bearer ${token}`);
   }
+  setHeader(config, "X-Request-Id", metadata.requestId);
+
+  logger.info("api", "request_started", {
+    requestId: metadata.requestId,
+    method: (config.method ?? "get").toUpperCase(),
+    url: config.url,
+  });
+
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const metadata = (response.config as LoggedRequestConfig).metadata;
+    logger.info("api", "request_completed", {
+      requestId: response.headers["x-request-id"] ?? metadata?.requestId,
+      method: (response.config.method ?? "get").toUpperCase(),
+      url: response.config.url,
+      status: response.status,
+      durationMs: resolveDuration(metadata),
+    });
+    return response;
+  },
   (error) => {
-    if (error.response?.status === 401) {
+    const config = error.config as LoggedRequestConfig | undefined;
+    const metadata = config?.metadata;
+    const logFailure = resolveFailureLogger(error.response?.status);
+
+    logFailure("api", "request_failed", {
+      requestId: error.response?.headers?.["x-request-id"] ?? metadata?.requestId,
+      method: config ? (config.method ?? "get").toUpperCase() : undefined,
+      url: config?.url,
+      status: error.response?.status,
+      durationMs: resolveDuration(metadata),
+      error: summarizeError(error),
+    });
+
+    if (error.response?.status === 401 && !isLoginRequest(config)) {
+      logger.warn("auth", "session_expired", {
+        requestId: error.response?.headers?.["x-request-id"] ?? metadata?.requestId,
+        url: config?.url,
+      });
       clearAuthState();
       toast.error("Your session expired. Please sign in again.");
       window.location.replace("/login");

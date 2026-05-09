@@ -27,6 +27,7 @@ interface DataTableProps<TData> {
   emptyTitle?: string;
   emptyDescription?: string;
   mobileCard: (row: TData) => React.ReactNode;
+  mobileActions?: (row: TData) => React.ReactNode;
 }
 
 export function DataTable<TData>({
@@ -36,6 +37,7 @@ export function DataTable<TData>({
   emptyTitle = "No records found",
   emptyDescription = "Create or adjust your filters to see results here.",
   mobileCard,
+  mobileActions,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -84,7 +86,10 @@ export function DataTable<TData>({
     <div className="space-y-4">
       <div className="grid gap-4 lg:hidden">
         {data.map((row, index) => (
-          <div key={index}>{mobileCard(row)}</div>
+          <div key={index} className="space-y-3">
+            {mobileCard(row)}
+            {mobileActions ? mobileActions(row) : null}
+          </div>
         ))}
       </div>
 

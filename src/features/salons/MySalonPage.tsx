@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api, parseApiError } from "@/lib/api";
+import { logValidationFailure } from "@/lib/form-logging";
+import { logger, summarizeError } from "@/lib/logger";
 import type { SalonBusinessResponse, UpdateSalonBusinessRequest } from "@/types/api";
 
 const schema = z.object({
@@ -29,6 +31,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export function MySalonPage() {
+  const formName = "my-salon";
   const queryClient = useQueryClient();
   const salonQuery = useQuery({
     queryKey: ["my-salon"],
@@ -51,6 +54,9 @@ export function MySalonPage() {
 
   useEffect(() => {
     if (salonQuery.data) {
+      logger.debug("forms", "my_salon_loaded", {
+        salonBusinessId: salonQuery.data.id,
+      });
       form.reset({
         businessName: salonQuery.data.businessName,
         email: salonQuery.data.email ?? "",
@@ -74,10 +80,19 @@ export function MySalonPage() {
       ).data;
     },
     onSuccess: () => {
+      logger.info("forms", "my_salon_submission_succeeded", {
+        salonBusinessId: salonQuery.data?.id,
+      });
       toast.success("Salon updated successfully");
       void queryClient.invalidateQueries({ queryKey: ["my-salon"] });
     },
-    onError: (error) => toast.error(parseApiError(error)),
+    onError: (error) => {
+      logger.error("forms", "my_salon_submission_failed", {
+        salonBusinessId: salonQuery.data?.id,
+        error: summarizeError(error),
+      });
+      toast.error(parseApiError(error));
+    },
   });
 
   if (salonQuery.isLoading) {
@@ -100,7 +115,17 @@ export function MySalonPage() {
 
       <form
         className="space-y-6"
-        onSubmit={form.handleSubmit((values) => updateMutation.mutate(values))}
+        onSubmit={form.handleSubmit(
+          (values) => {
+            logger.info("forms", "my_salon_submission_started", {
+              formName,
+              salonBusinessId: salonQuery.data?.id,
+              fieldCount: Object.keys(values).length,
+            });
+            updateMutation.mutate(values);
+          },
+          (errors) => logValidationFailure(formName, errors as Record<string, never>),
+        )}
       >
         <FormSection title="Salon profile">
           <div className="grid gap-5 md:grid-cols-2">

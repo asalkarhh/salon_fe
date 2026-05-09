@@ -20,6 +20,8 @@ import { routes } from "@/config/routes";
 import { formatCurrency } from "@/lib/utils";
 import { toSalonSelectOption } from "@/lib/select-options";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { logValidationFailure } from "@/lib/form-logging";
+import { logger, summarizeError } from "@/lib/logger";
 import type {
   AppointmentResponse,
   BranchResponse,
@@ -54,6 +56,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
+  const formName = `invoices-${mode}`;
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -109,6 +112,10 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
 
   useEffect(() => {
     if (recordQuery.data) {
+      logger.debug("forms", "invoice_record_loaded", {
+        formName,
+        recordId: id,
+      });
       form.reset({
         salonBusinessId: recordQuery.data.salonBusinessId,
         branchId: recordQuery.data.branchId,
@@ -136,6 +143,10 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
   const discountAmount = form.watch("discountAmount");
 
   const handleSalonChange = (salonBusinessId: string) => {
+    logger.debug("forms", "invoice_salon_changed", {
+      formName,
+      recordId: id,
+    });
     form.setValue("salonBusinessId", salonBusinessId, {
       shouldDirty: true,
       shouldTouch: true,
@@ -193,11 +204,22 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
       return (await api.put<InvoiceResponse>(`/api/invoices/${id}`, payload)).data;
     },
     onSuccess: (response) => {
+      logger.info("forms", "invoice_submission_succeeded", {
+        formName,
+        recordId: response.id,
+      });
       toast.success("Invoice saved");
       void queryClient.invalidateQueries({ queryKey: ["invoices"] });
       navigate(`${routes.invoices}/${response.id}`);
     },
-    onError: (error) => toast.error(parseApiError(error)),
+    onError: (error) => {
+      logger.error("forms", "invoice_submission_failed", {
+        formName,
+        recordId: id,
+        error: summarizeError(error),
+      });
+      toast.error(parseApiError(error));
+    },
   });
 
   if (
@@ -244,21 +266,29 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
 
       <form
         className="space-y-6"
-        onSubmit={form.handleSubmit((values) =>
-          saveMutation.mutate({
-            salonBusinessId: values.salonBusinessId || undefined,
-            branchId: values.branchId,
-            appointmentId: values.appointmentId || undefined,
-            customerProfileId: values.customerProfileId,
-            invoiceNumber: values.invoiceNumber || undefined,
-            invoiceDate: values.invoiceDate,
-            subtotalAmount: totals.subtotal,
-            taxAmount: values.taxAmount,
-            discountAmount: values.discountAmount,
-            totalAmount: totals.total,
-            paymentStatus: values.paymentStatus as InvoiceRequest["paymentStatus"],
-            items: values.items,
-          }),
+        onSubmit={form.handleSubmit(
+          (values) => {
+            logger.info("forms", "invoice_submission_started", {
+              formName,
+              recordId: id,
+              itemCount: values.items.length,
+            });
+            saveMutation.mutate({
+              salonBusinessId: values.salonBusinessId || undefined,
+              branchId: values.branchId,
+              appointmentId: values.appointmentId || undefined,
+              customerProfileId: values.customerProfileId,
+              invoiceNumber: values.invoiceNumber || undefined,
+              invoiceDate: values.invoiceDate,
+              subtotalAmount: totals.subtotal,
+              taxAmount: values.taxAmount,
+              discountAmount: values.discountAmount,
+              totalAmount: totals.total,
+              paymentStatus: values.paymentStatus as InvoiceRequest["paymentStatus"],
+              items: values.items,
+            });
+          },
+          (errors) => logValidationFailure(formName, errors as Record<string, never>),
         )}
       >
         <FormSection title="Invoice details">

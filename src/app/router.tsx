@@ -195,6 +195,10 @@ export function AppRouter() {
               element: <ResourceFormRoute resourceKey="serviceCategories" mode="create" />,
             },
             {
+              path: `${routes.serviceCategories.slice(1)}/:id`,
+              element: <ResourceDetailRoute resourceKey="serviceCategories" />,
+            },
+            {
               path: `${routes.serviceCategories.slice(1)}/:id/edit`,
               element: <ResourceFormRoute resourceKey="serviceCategories" mode="edit" />,
             },
