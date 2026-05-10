@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -59,8 +59,11 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
   const formName = `invoices-${mode}`;
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const createPrefillAppliedRef = useRef(false);
+  const createDefaultInvoiceDate = new Date().toISOString().slice(0, 10);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -70,7 +73,7 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
       appointmentId: "",
       customerProfileId: "",
       invoiceNumber: "",
-      invoiceDate: "",
+      invoiceDate: createDefaultInvoiceDate,
       taxAmount: 0,
       discountAmount: 0,
       paymentStatus: "PENDING",
@@ -137,7 +140,48 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
     }
   }, [form, recordQuery.data]);
 
+  useEffect(() => {
+    if (mode !== "create" || createPrefillAppliedRef.current) {
+      return;
+    }
+
+    const nextValues = form.getValues();
+    let changed = false;
+
+    const branchId = searchParams.get("branchId");
+    const appointmentId = searchParams.get("appointmentId");
+    const customerProfileId = searchParams.get("customerProfileId");
+    const invoiceDate = searchParams.get("invoiceDate");
+
+    if (branchId) {
+      nextValues.branchId = branchId;
+      changed = true;
+    }
+
+    if (appointmentId) {
+      nextValues.appointmentId = appointmentId;
+      changed = true;
+    }
+
+    if (customerProfileId) {
+      nextValues.customerProfileId = customerProfileId;
+      changed = true;
+    }
+
+    if (invoiceDate) {
+      nextValues.invoiceDate = invoiceDate;
+      changed = true;
+    }
+
+    if (changed) {
+      form.reset(nextValues);
+    }
+
+    createPrefillAppliedRef.current = true;
+  }, [form, mode, searchParams]);
+
   const selectedSalonId = form.watch("salonBusinessId");
+  const selectedAppointmentId = form.watch("appointmentId");
   const items = form.watch("items");
   const taxAmount = form.watch("taxAmount");
   const discountAmount = form.watch("discountAmount");
@@ -195,6 +239,36 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
     const total = subtotal + Number(taxAmount ?? 0) - Number(discountAmount ?? 0);
     return { subtotal, total };
   }, [discountAmount, items, taxAmount]);
+
+  useEffect(() => {
+    if (!selectedAppointmentId) {
+      return;
+    }
+
+    const selectedAppointment = (appointmentsQuery.data ?? []).find(
+      (appointment) => appointment.id === selectedAppointmentId,
+    );
+
+    if (!selectedAppointment) {
+      return;
+    }
+
+    if (form.getValues("branchId") !== selectedAppointment.branchId) {
+      form.setValue("branchId", selectedAppointment.branchId, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+    }
+
+    if (form.getValues("customerProfileId") !== selectedAppointment.customerProfileId) {
+      form.setValue("customerProfileId", selectedAppointment.customerProfileId, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+    }
+  }, [appointmentsQuery.data, form, selectedAppointmentId]);
 
   const saveMutation = useMutation({
     mutationFn: async (payload: InvoiceRequest) => {
@@ -342,10 +416,25 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
                 {...form.register("customerProfileId")}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="invoiceNumber">Invoice Number</Label>
-              <Input id="invoiceNumber" type="text" {...form.register("invoiceNumber")} />
-            </div>
+            {mode === "edit" ? (
+              <div className="space-y-2">
+                <Label htmlFor="invoiceNumber">Invoice Number</Label>
+                <Input
+                  id="invoiceNumber"
+                  type="text"
+                  value={form.watch("invoiceNumber") ?? ""}
+                  disabled
+                  readOnly
+                />
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border/80 bg-secondary/25 p-4 md:col-span-2">
+                <p className="text-sm font-medium text-foreground">Invoice number will be auto-generated</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Save the bill first and the system will assign the invoice number automatically.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="invoiceDate">Invoice Date</Label>
               <Input id="invoiceDate" type="date" {...form.register("invoiceDate")} />

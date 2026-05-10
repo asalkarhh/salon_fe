@@ -31,9 +31,8 @@ const checklist = [
   { label: "Set up service catalog", to: routes.services },
   { label: "Add customer", to: routes.customers },
   { label: "Add staff", to: routes.staff },
-  { label: "Create appointment", to: routes.appointments },
-  { label: "Create invoice", to: routes.invoices },
-  { label: "Record payment", to: routes.payments },
+  { label: "Open visits", to: routes.visits },
+  { label: "Open billing", to: routes.billing },
 ];
 
 export function OwnerDashboard() {

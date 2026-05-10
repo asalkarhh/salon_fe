@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -34,6 +34,7 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
   const formName = `${resource.key}-${mode}`;
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -68,6 +69,7 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
   });
   const previousValuesRef = useRef<Record<string, unknown>>({});
   const skipDependentResetRef = useRef(true);
+  const queryPrefillAppliedRef = useRef(false);
 
   useEffect(() => {
     if (recordQuery.data && resource.toFormValues) {
@@ -81,6 +83,39 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
       form.reset(nextValues);
     }
   }, [form, formName, id, recordQuery.data, resource, user]);
+
+  useEffect(() => {
+    if (mode !== "create" || queryPrefillAppliedRef.current) {
+      return;
+    }
+
+    const nextValues = resource.defaultValues(user) as Record<string, unknown>;
+    let changed = false;
+
+    searchParams.forEach((value, key) => {
+      if (!(key in nextValues)) {
+        return;
+      }
+
+      const currentValue = nextValues[key];
+      if (
+        typeof currentValue === "string"
+        || currentValue === undefined
+        || currentValue === null
+      ) {
+        nextValues[key] = value;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      previousValuesRef.current = { ...nextValues };
+      skipDependentResetRef.current = true;
+      form.reset(nextValues);
+    }
+
+    queryPrefillAppliedRef.current = true;
+  }, [form, mode, resource, searchParams, user]);
 
   const values = form.watch();
 

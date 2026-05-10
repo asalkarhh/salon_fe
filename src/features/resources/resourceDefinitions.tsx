@@ -58,6 +58,11 @@ const paymentMethodOptions = ["CASH", "CARD", "UPI", "ONLINE"].map((method) => (
   value: method,
 }));
 
+const customerGenderOptions = ["Male", "Female"].map((gender) => ({
+  label: gender,
+  value: gender,
+}));
+
 const paymentStatusOptions = [
   "PENDING",
   "PAID",
@@ -141,6 +146,20 @@ const categoryLookup: LookupDefinition<ServiceCategoryResponse> = {
   },
   toOption: (item) => lookupOption(item, item.name),
 };
+
+function normalizeCustomerGender(gender?: string | null) {
+  if (!gender) {
+    return "";
+  }
+  const normalized = gender.trim().toLowerCase();
+  if (normalized === "male") {
+    return "Male";
+  }
+  if (normalized === "female") {
+    return "Female";
+  }
+  return gender;
+}
 
 export const serviceLookup: LookupDefinition<ServiceResponse> = {
   key: "services",
@@ -276,6 +295,7 @@ const serviceSchema = () =>
 const customerSchema = () =>
   z.object({
     salonBusinessId: optionalString(),
+    branchId: z.string().trim().min(1, "Branch is required"),
     firstName: z.string().trim().min(1, "First name is required"),
     lastName: optionalString(),
     email: optionalEmail(),
@@ -1006,6 +1026,7 @@ export const resourceRegistry = {
     schema: customerSchema,
     defaultValues: () => ({
       salonBusinessId: "",
+      branchId: "",
       firstName: "",
       lastName: "",
       email: "",
@@ -1017,11 +1038,12 @@ export const resourceRegistry = {
     toPayload: (values) => cleanPayload(values as CustomerRequest),
     toFormValues: (record) => ({
       salonBusinessId: record.salonBusinessId,
+      branchId: record.branchId ?? "",
       firstName: record.firstName,
       lastName: record.lastName ?? "",
       email: record.email ?? "",
       phone: record.phone,
-      gender: record.gender ?? "",
+      gender: normalizeCustomerGender(record.gender),
       dateOfBirth: record.dateOfBirth ?? "",
       notes: record.notes ?? "",
     }),
@@ -1031,17 +1053,26 @@ export const resourceRegistry = {
         label: "Salon",
         type: "select",
         lookupKey: "salons",
+        resetOnChange: ["branchId"],
         hidden: ({ user }) => user.role !== "SUPER_ADMIN",
+      },
+      {
+        name: "branchId",
+        label: "Branch",
+        type: "select",
+        lookupKey: "branches",
+        searchable: true,
+        disabled: ({ user, values }) => user.role === "SUPER_ADMIN" && !values.salonBusinessId,
       },
       { name: "firstName", label: "First Name", type: "text" },
       { name: "lastName", label: "Last Name", type: "text" },
       { name: "email", label: "Email", type: "email" },
       { name: "phone", label: "Phone", type: "text" },
-      { name: "gender", label: "Gender", type: "text" },
+      { name: "gender", label: "Gender", type: "select", options: customerGenderOptions },
       { name: "dateOfBirth", label: "Date Of Birth", type: "date" },
       { name: "notes", label: "Notes", type: "textarea", gridSpan: 2 },
     ],
-    lookupDefinitions: [salonLookup],
+    lookupDefinitions: [salonLookup, branchLookup],
     listFilters: [
       {
         name: "salonBusinessId",
@@ -1050,8 +1081,23 @@ export const resourceRegistry = {
         lookupKey: "salons",
         hidden: ({ user }) => user.role !== "SUPER_ADMIN",
       },
+      {
+        name: "branchId",
+        label: "Filter by branch",
+        type: "select",
+        lookupKey: "branches",
+        searchable: true,
+      },
     ],
-    listQuery: async () => (await api.get<CustomerResponse[]>("/api/customers")).data,
+    listQuery: async (_user, filters) =>
+      (
+        await api.get<CustomerResponse[]>("/api/customers", {
+          params: {
+            ...(filters.salonBusinessId ? { salonBusinessId: filters.salonBusinessId } : {}),
+            ...(filters.branchId ? { branchId: filters.branchId } : {}),
+          },
+        })
+      ).data,
     getQuery: async (id) => (await api.get<CustomerResponse>(`/api/customers/${id}`)).data,
     createMutation: async (payload) =>
       (await api.post<CustomerResponse>("/api/customers", payload)).data,
@@ -1073,35 +1119,42 @@ export const resourceRegistry = {
       },
       { id: "phone", header: "Phone", cell: (record) => record.phone },
       { id: "email", header: "Email", cell: (record) => record.email ?? "-" },
+      { id: "branch", header: "Branch", cell: (record) => helpers.lookupLabel("branches", record.branchId) },
       { id: "salon", header: "Salon", cell: (record) => helpers.lookupLabel("salons", record.salonBusinessId) },
       { id: "status", header: "Status", cell: (record) => <StatusBadge status={record.active ? "ACTIVE" : "INACTIVE"} /> },
     ],
-    mobileCard: (record) =>
+    mobileCard: (record, helpers) =>
       detailCard(`${record.firstName} ${record.lastName ?? ""}`.trim(), [
         <span key="phone">{record.phone}</span>,
         <span key="email">{record.email ?? "-"}</span>,
+        <span key="branch">{helpers.lookupLabel("branches", record.branchId)}</span>,
         <span key="dob">{formatDate(record.dateOfBirth)}</span>,
         <StatusBadge key="status" status={record.active ? "ACTIVE" : "INACTIVE"} />,
       ]),
-    detailFields: () => [
+    detailFields: (helpers) => [
       { label: "First Name", value: (record) => record.firstName },
       { label: "Last Name", value: (record) => record.lastName ?? "-" },
       { label: "Email", value: (record) => record.email ?? "-" },
       { label: "Phone", value: (record) => record.phone },
-      { label: "Gender", value: (record) => record.gender ?? "-" },
+      { label: "Branch", value: (record) => helpers.lookupLabel("branches", record.branchId) },
+      { label: "Salon", value: (record) => helpers.lookupLabel("salons", record.salonBusinessId) },
+      { label: "Gender", value: (record) => normalizeCustomerGender(record.gender) || "-" },
       { label: "Date Of Birth", value: (record) => formatDate(record.dateOfBirth) },
       { label: "Notes", value: (record) => record.notes ?? "-" },
       { label: "Status", value: (record) => <StatusBadge status={record.active ? "ACTIVE" : "INACTIVE"} /> },
       { label: "Updated", value: (record) => formatDateTime(record.updatedAt) },
     ],
-    searchValues: (record) => [
+    searchValues: (record, helpers) => [
       record.firstName,
       record.lastName ?? "",
       record.email ?? "",
       record.phone,
+      helpers.lookupLabel("branches", record.branchId),
+      helpers.lookupLabel("salons", record.salonBusinessId),
     ],
     localFilter: (record, filters) =>
-      !filters.salonBusinessId || record.salonBusinessId === filters.salonBusinessId,
+      (!filters.salonBusinessId || record.salonBusinessId === filters.salonBusinessId)
+      && (!filters.branchId || record.branchId === filters.branchId),
   } satisfies ResourceDefinition<CustomerResponse, CustomerRequest>,
   staff: {
     key: "staff",

@@ -291,6 +291,7 @@ export interface ServiceResponse {
 export interface CustomerRequest {
   userId?: string | null;
   salonBusinessId?: string | null;
+  branchId: string;
   firstName: string;
   lastName?: string | null;
   email?: string | null;
@@ -304,6 +305,7 @@ export interface CustomerResponse {
   id: string;
   userId: string | null;
   salonBusinessId: string;
+  branchId: string | null;
   firstName: string;
   lastName: string | null;
   email: string | null;

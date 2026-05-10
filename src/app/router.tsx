@@ -18,6 +18,8 @@ import { InvoicesPage } from "@/features/invoices/InvoicesPage";
 import { OwnerDetailPage } from "@/features/owners/OwnerDetailPage";
 import { OwnerFormPage } from "@/features/owners/OwnerFormPage";
 import { OwnersPage } from "@/features/owners/OwnersPage";
+import { OwnerBillingPage } from "@/features/operations/OwnerBillingPage";
+import { OwnerVisitsPage } from "@/features/operations/OwnerVisitsPage";
 import { PaymentsPage } from "@/features/payments/PaymentsPage";
 import { QueueTokenDetailPage } from "@/features/queue-tokens/QueueTokenDetailPage";
 import { QueueTokenFormPage } from "@/features/queue-tokens/QueueTokenFormPage";
@@ -83,6 +85,34 @@ function RedirectOwnersToServiceCatalog({
 
   if (user?.role === "SALON_OWNER") {
     return <Navigate to={routes.services} replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function RedirectOwnersToVisits({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user } = useAuth();
+
+  if (user?.role === "SALON_OWNER") {
+    return <Navigate to={routes.visits} replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function RedirectOwnersToBilling({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user } = useAuth();
+
+  if (user?.role === "SALON_OWNER") {
+    return <Navigate to={routes.billing} replace />;
   }
 
   return <>{children}</>;
@@ -277,6 +307,10 @@ export function AppRouter() {
               element: <ResourceListRoute resourceKey="customers" />,
             },
             {
+              path: routes.visits.slice(1),
+              element: guardElement(pageUiAccess.visits, <OwnerVisitsPage />),
+            },
+            {
               path: `${routes.customers.slice(1)}/new`,
               element: <ResourceFormRoute resourceKey="customers" mode="create" />,
             },
@@ -305,8 +339,19 @@ export function AppRouter() {
               element: <ResourceFormRoute resourceKey="staff" mode="edit" />,
             },
             {
+              path: routes.billing.slice(1),
+              element: guardElement(pageUiAccess.billing, <OwnerBillingPage />),
+            },
+            {
               path: routes.payments.slice(1),
-              element: guardElement(pageUiAccess.payments, <PaymentsPage />),
+              element: guardElement(
+                pageUiAccess.payments,
+                (
+                  <RedirectOwnersToBilling>
+                    <PaymentsPage />
+                  </RedirectOwnersToBilling>
+                ),
+              ),
             },
             {
               path: `${routes.payments.slice(1)}/new`,
@@ -342,7 +387,14 @@ export function AppRouter() {
             },
             {
               path: routes.queueTokens.slice(1),
-              element: guardElement(pageUiAccess.queueTokens, <QueueTokensPage />),
+              element: guardElement(
+                pageUiAccess.queueTokens,
+                (
+                  <RedirectOwnersToVisits>
+                    <QueueTokensPage />
+                  </RedirectOwnersToVisits>
+                ),
+              ),
             },
             {
               path: `${routes.queueTokens.slice(1)}/new`,
@@ -354,7 +406,14 @@ export function AppRouter() {
             },
             {
               path: routes.appointments.slice(1),
-              element: guardElement(pageUiAccess.appointments, <AppointmentsPage />),
+              element: guardElement(
+                pageUiAccess.appointments,
+                (
+                  <RedirectOwnersToVisits>
+                    <AppointmentsPage />
+                  </RedirectOwnersToVisits>
+                ),
+              ),
             },
             {
               path: `${routes.appointments.slice(1)}/new`,
@@ -379,7 +438,14 @@ export function AppRouter() {
             },
             {
               path: routes.invoices.slice(1),
-              element: guardElement(pageUiAccess.invoices, <InvoicesPage />),
+              element: guardElement(
+                pageUiAccess.invoices,
+                (
+                  <RedirectOwnersToBilling>
+                    <InvoicesPage />
+                  </RedirectOwnersToBilling>
+                ),
+              ),
             },
             {
               path: `${routes.invoices.slice(1)}/new`,

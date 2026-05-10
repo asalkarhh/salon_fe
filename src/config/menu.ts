@@ -105,6 +105,12 @@ const menuItems: MenuItem[] = [
     roles: getResourceUiRoles("staff", "list"),
   },
   {
+    label: "Visits",
+    to: routes.visits,
+    icon: CalendarClock,
+    roles: pageUiAccess.visits,
+  },
+  {
     label: "Appointments",
     to: routes.appointments,
     icon: CalendarClock,
@@ -115,6 +121,12 @@ const menuItems: MenuItem[] = [
     to: routes.queueTokens,
     icon: Ticket,
     roles: pageUiAccess.queueTokenCreate,
+  },
+  {
+    label: "Billing",
+    to: routes.billing,
+    icon: WalletCards,
+    roles: pageUiAccess.billing,
   },
   {
     label: "Invoices",
@@ -158,6 +170,18 @@ export function getMenuItems(role?: Role): MenuItem[] {
 
       if (role === "SALON_OWNER" && item.to === routes.services) {
         return [{ ...item, label: "Service Catalog" }];
+      }
+
+      if (
+        role === "SALON_OWNER"
+        && [
+          routes.appointments,
+          routes.queueTokens,
+          routes.invoices,
+          routes.payments,
+        ].includes(item.to as never)
+      ) {
+        return [];
       }
 
       return [item];
