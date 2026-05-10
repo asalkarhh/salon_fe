@@ -31,7 +31,7 @@ export interface MenuItem {
   roles: readonly Role[];
 }
 
-export const menuItems: MenuItem[] = [
+const menuItems: MenuItem[] = [
   {
     label: "Dashboard",
     to: routes.dashboard,
@@ -147,3 +147,19 @@ export const menuItems: MenuItem[] = [
     roles: pageUiAccess.payroll,
   },
 ];
+
+export function getMenuItems(role?: Role): MenuItem[] {
+  return menuItems
+    .filter((item) => role && item.roles.includes(role as never))
+    .flatMap((item) => {
+      if (role === "SALON_OWNER" && item.to === routes.serviceCategories) {
+        return [];
+      }
+
+      if (role === "SALON_OWNER" && item.to === routes.services) {
+        return [{ ...item, label: "Service Catalog" }];
+      }
+
+      return [item];
+    });
+}

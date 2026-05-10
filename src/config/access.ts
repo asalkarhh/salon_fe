@@ -45,6 +45,12 @@ const resourceUiAccessOverrides: Partial<
     create: ["SALON_OWNER"],
     edit: ["SUPER_ADMIN", "SALON_OWNER"],
   },
+  serviceCategories: {
+    list: ["SUPER_ADMIN"],
+    detail: ["SUPER_ADMIN"],
+    create: ["SUPER_ADMIN"],
+    edit: ["SUPER_ADMIN"],
+  },
   services: {
     list: ["SUPER_ADMIN", "SALON_OWNER"],
     detail: ["SUPER_ADMIN", "SALON_OWNER"],

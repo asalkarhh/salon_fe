@@ -27,9 +27,11 @@ import { ResourceFormPage } from "@/features/resources/ResourceFormPage";
 import { ResourceListPage } from "@/features/resources/ResourceListPage";
 import { getResource, type ResourceKey } from "@/features/resources/resourceDefinitions";
 import { MySalonPage } from "@/features/salons/MySalonPage";
+import { OwnerServiceCatalogPage } from "@/features/services/OwnerServiceCatalogPage";
 import { MyEarningsPage } from "@/features/staff-earnings/MyEarningsPage";
 import { StaffEarningsPage } from "@/features/staff-earnings/StaffEarningsPage";
 import type { Role } from "@/types/enums";
+import { useAuth } from "@/features/auth/AuthProvider";
 
 function NotFoundPage() {
   return (
@@ -70,6 +72,30 @@ function ResourceDetailRoute({ resourceKey }: { resourceKey: ResourceKey }) {
       <ResourceDetailPage resource={getResource(resourceKey) as never} />
     </RoleGuard>
   );
+}
+
+function RedirectOwnersToServiceCatalog({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user } = useAuth();
+
+  if (user?.role === "SALON_OWNER") {
+    return <Navigate to={routes.services} replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function ServiceCatalogRoute() {
+  const { user } = useAuth();
+
+  if (user?.role === "SALON_OWNER") {
+    return <OwnerServiceCatalogPage />;
+  }
+
+  return <ResourceListRoute resourceKey="services" />;
 }
 
 function guardElement(roles: readonly Role[], element: React.ReactNode) {
@@ -188,35 +214,63 @@ export function AppRouter() {
             },
             {
               path: routes.serviceCategories.slice(1),
-              element: <ResourceListRoute resourceKey="serviceCategories" />,
+              element: (
+                <RedirectOwnersToServiceCatalog>
+                  <ResourceListRoute resourceKey="serviceCategories" />
+                </RedirectOwnersToServiceCatalog>
+              ),
             },
             {
               path: `${routes.serviceCategories.slice(1)}/new`,
-              element: <ResourceFormRoute resourceKey="serviceCategories" mode="create" />,
+              element: (
+                <RedirectOwnersToServiceCatalog>
+                  <ResourceFormRoute resourceKey="serviceCategories" mode="create" />
+                </RedirectOwnersToServiceCatalog>
+              ),
             },
             {
               path: `${routes.serviceCategories.slice(1)}/:id`,
-              element: <ResourceDetailRoute resourceKey="serviceCategories" />,
+              element: (
+                <RedirectOwnersToServiceCatalog>
+                  <ResourceDetailRoute resourceKey="serviceCategories" />
+                </RedirectOwnersToServiceCatalog>
+              ),
             },
             {
               path: `${routes.serviceCategories.slice(1)}/:id/edit`,
-              element: <ResourceFormRoute resourceKey="serviceCategories" mode="edit" />,
+              element: (
+                <RedirectOwnersToServiceCatalog>
+                  <ResourceFormRoute resourceKey="serviceCategories" mode="edit" />
+                </RedirectOwnersToServiceCatalog>
+              ),
             },
             {
               path: routes.services.slice(1),
-              element: <ResourceListRoute resourceKey="services" />,
+              element: <ServiceCatalogRoute />,
             },
             {
               path: `${routes.services.slice(1)}/new`,
-              element: <ResourceFormRoute resourceKey="services" mode="create" />,
+              element: (
+                <RedirectOwnersToServiceCatalog>
+                  <ResourceFormRoute resourceKey="services" mode="create" />
+                </RedirectOwnersToServiceCatalog>
+              ),
             },
             {
               path: `${routes.services.slice(1)}/:id`,
-              element: <ResourceDetailRoute resourceKey="services" />,
+              element: (
+                <RedirectOwnersToServiceCatalog>
+                  <ResourceDetailRoute resourceKey="services" />
+                </RedirectOwnersToServiceCatalog>
+              ),
             },
             {
               path: `${routes.services.slice(1)}/:id/edit`,
-              element: <ResourceFormRoute resourceKey="services" mode="edit" />,
+              element: (
+                <RedirectOwnersToServiceCatalog>
+                  <ResourceFormRoute resourceKey="services" mode="edit" />
+                </RedirectOwnersToServiceCatalog>
+              ),
             },
             {
               path: routes.customers.slice(1),

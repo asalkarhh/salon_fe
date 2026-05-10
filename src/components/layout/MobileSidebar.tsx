@@ -2,7 +2,7 @@ import { Menu, X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { BusinessLogo } from "@/components/layout/BusinessLogo";
-import { menuItems } from "@/config/menu";
+import { getMenuItems } from "@/config/menu";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -14,7 +14,7 @@ export function MobileSidebar() {
   const { user, logout } = useAuth();
 
   const items = useMemo(
-    () => menuItems.filter((item) => user && item.roles.includes(user.role as never)),
+    () => getMenuItems(user?.role as never),
     [user],
   );
 

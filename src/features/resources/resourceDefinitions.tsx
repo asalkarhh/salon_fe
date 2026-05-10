@@ -791,15 +791,16 @@ export const resourceRegistry = {
     title: "Service Categories",
     singular: "Service Category",
     description: "Owner-managed category taxonomy used to group salon services before pricing and appointment setup.",
-    roles: ["SALON_OWNER"] satisfies Role[],
-    createRoles: ["SALON_OWNER"] satisfies Role[],
-    editRoles: ["SALON_OWNER"] satisfies Role[],
+    roles: ["SUPER_ADMIN", "SALON_OWNER"] satisfies Role[],
+    createRoles: ["SUPER_ADMIN", "SALON_OWNER"] satisfies Role[],
+    editRoles: ["SUPER_ADMIN", "SALON_OWNER"] satisfies Role[],
     listPath: routes.serviceCategories,
     createPath: `${routes.serviceCategories}/new`,
     detailPath: (id) => `${routes.serviceCategories}/${id}`,
     editPath: (id) => `${routes.serviceCategories}/${id}/edit`,
     schema: serviceCategorySchema,
     defaultValues: () => ({
+      salonBusinessId: "",
       name: "",
       description: "",
       displayOrder: undefined,
@@ -807,19 +808,44 @@ export const resourceRegistry = {
     }),
     toPayload: (values) => cleanPayload(values as ServiceCategoryRequest),
     toFormValues: (record) => ({
+      salonBusinessId: record.salonBusinessId,
       name: record.name,
       description: record.description ?? "",
       displayOrder: record.displayOrder ?? undefined,
       active: record.active,
     }),
     fields: [
+      {
+        name: "salonBusinessId",
+        label: "Salon",
+        type: "select",
+        lookupKey: "salons",
+        hidden: ({ user }) => user.role !== "SUPER_ADMIN",
+      },
       { name: "name", label: "Category Name", type: "text" },
       { name: "description", label: "Description", type: "textarea", gridSpan: 2 },
       { name: "displayOrder", label: "Display Order", type: "number" },
       { name: "active", label: "Active", type: "checkbox", gridSpan: 2 },
     ],
-    listQuery: async () =>
-      (await api.get<ServiceCategoryResponse[]>("/api/services/categories")).data,
+    lookupDefinitions: [salonLookup],
+    listFilters: [
+      {
+        name: "salonBusinessId",
+        label: "Filter by salon",
+        type: "select",
+        lookupKey: "salons",
+        hidden: ({ user }) => user.role !== "SUPER_ADMIN",
+      },
+    ],
+    listQuery: async (user, filters) =>
+      (
+        await api.get<ServiceCategoryResponse[]>("/api/services/categories", {
+          params:
+            user.role === "SUPER_ADMIN" && filters.salonBusinessId
+              ? { salonBusinessId: filters.salonBusinessId }
+              : undefined,
+        })
+      ).data,
     getQuery: async (id) =>
       (await api.get<ServiceCategoryResponse>(`/api/services/categories/${id}`)).data,
     createMutation: async (payload) =>

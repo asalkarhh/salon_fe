@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { BusinessLogo } from "@/components/layout/BusinessLogo";
-import { menuItems } from "@/config/menu";
+import { getMenuItems } from "@/config/menu";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -23,9 +23,7 @@ export function Sidebar() {
       </div>
 
       <nav className="mt-6 flex-1 space-y-2">
-        {menuItems
-          .filter((item) => user && item.roles.includes(user.role as never))
-          .map((item) => {
+        {getMenuItems(user?.role as never).map((item) => {
             const Icon = item.icon;
             return (
               <NavLink

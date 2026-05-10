@@ -28,8 +28,7 @@ import type { OwnerDashboardResponse } from "@/types/api";
 
 const checklist = [
   { label: "Confirm salon", to: routes.mySalon },
-  { label: "Add service category", to: routes.serviceCategories },
-  { label: "Add service", to: routes.services },
+  { label: "Set up service catalog", to: routes.services },
   { label: "Add customer", to: routes.customers },
   { label: "Add staff", to: routes.staff },
   { label: "Create appointment", to: routes.appointments },
