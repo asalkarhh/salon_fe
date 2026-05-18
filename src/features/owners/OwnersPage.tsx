@@ -34,9 +34,14 @@ function ownerMatchesSearch(owner: OwnerResponse, search: string) {
     .includes(needle);
 }
 
+/**
+ * Super-admin owner directory backed by the owner list endpoint.
+ */
 export function OwnersPage() {
   const [search, setSearch] = useState("");
 
+  // Loads the aggregated owner summary view from GET /api/owners so the list can
+  // show owner, salon, and subscription details together.
   const ownersQuery = useQuery({
     queryKey: ["owners"],
     queryFn: async () => (await api.get<OwnerResponse[]>("/api/owners")).data,

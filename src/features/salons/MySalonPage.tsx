@@ -30,9 +30,15 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
+/**
+ * Owner-facing salon profile editor backed by /api/salons/my-salon and the
+ * standard salon update endpoint.
+ */
 export function MySalonPage() {
   const formName = "my-salon";
   const queryClient = useQueryClient();
+
+  // Reads the current owner's salon context directly from GET /api/salons/my-salon.
   const salonQuery = useQuery({
     queryKey: ["my-salon"],
     queryFn: async () => (await api.get<SalonBusinessResponse>("/api/salons/my-salon")).data,
@@ -70,6 +76,7 @@ export function MySalonPage() {
     }
   }, [form, salonQuery.data]);
 
+  // Saves the owner-edited salon profile back through PUT /api/salons/{id}.
   const updateMutation = useMutation({
     mutationFn: async (payload: UpdateSalonBusinessRequest) => {
       if (!salonQuery.data) {

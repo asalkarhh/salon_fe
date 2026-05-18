@@ -17,6 +17,8 @@ import type { LoginResponse } from "@/types/api";
 const AuthContext = createContext<AuthContextValue | null>(null);
 const sessionHydrationRequests = new Map<string, Promise<CurrentUserResponse>>();
 
+// Deduplicates concurrent /api/auth/me calls so refreshes and route mounts do
+// not fan out multiple session-hydration requests for the same token.
 function hydrateCurrentUser(token: string) {
   const existingRequest = sessionHydrationRequests.get(token);
   if (existingRequest) {
@@ -43,6 +45,10 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+/**
+ * Holds the authenticated user state and restores it from the backend whenever
+ * a persisted token is present.
+ */
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, setState] = useState<AuthState>(() => loadAuthState());
   const [hydrated, setHydrated] = useState(false);
@@ -166,6 +172,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/**
+ * Convenience hook for accessing the authenticated user and auth actions.
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

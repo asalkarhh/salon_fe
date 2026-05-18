@@ -21,6 +21,10 @@ import type {
   SalonBusinessResponse,
 } from "@/types/api";
 
+/**
+ * Queue token list and support view backed by /api/queue-tokens plus supporting
+ * branch, customer, and salon lookups.
+ */
 export function QueueTokensPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -39,6 +43,8 @@ export function QueueTokensPage() {
     }
   }, [isSuperAdmin, supportSalonId]);
 
+  // Super-admin support mode resolves the salon first so queue browsing stays
+  // scoped to a single tenant.
   const salonsQuery = useQuery({
     queryKey: ["queue", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,

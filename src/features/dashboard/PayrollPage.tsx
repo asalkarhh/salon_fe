@@ -22,10 +22,15 @@ import type { PayrollSummaryResponse } from "@/types/api";
 
 const today = new Date();
 
+/**
+ * Monthly payroll screen backed by GET /api/dashboard/owner/payroll.
+ */
 export function PayrollPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
 
+  // Year and month are sent as query parameters to the backend payroll summary
+  // endpoint so the server can apply the same payout logic used elsewhere.
   const payrollQuery = useQuery({
     queryKey: ["dashboard", "payroll", year, month],
     queryFn: async () =>

@@ -142,6 +142,10 @@ function sortServices(services: ServiceResponse[]) {
   return [...services].sort((left, right) => left.name.localeCompare(right.name));
 }
 
+/**
+ * Owner-specific combined catalog workspace that manages service categories and
+ * services together instead of using separate generic resource pages.
+ */
 export function OwnerServiceCatalogPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -164,6 +168,8 @@ export function OwnerServiceCatalogPage() {
   const [serviceForm, setServiceForm] = useState<ServiceFormValues>(defaultServiceFormValues());
   const [serviceErrors, setServiceErrors] = useState<Partial<Record<keyof ServiceFormValues, string>>>({});
 
+  // The owner workspace keeps categories and services side by side, so it loads
+  // both endpoints up front and groups the results locally.
   const categoriesQuery = useQuery({
     queryKey: categoryQueryKey,
     queryFn: async () => (await api.get<ServiceCategoryResponse[]>("/api/services/categories")).data,
@@ -282,6 +288,7 @@ export function OwnerServiceCatalogPage() {
     ]);
   };
 
+  // Category saves switch between POST and PUT on /api/services/categories.
   const categorySaveMutation = useMutation({
     mutationFn: async ({
       mode,
@@ -318,6 +325,8 @@ export function OwnerServiceCatalogPage() {
     },
   });
 
+  // Category activation uses the dedicated activate/deactivate endpoints rather
+  // than the full update endpoint.
   const categoryToggleMutation = useMutation({
     mutationFn: async ({
       recordId,
@@ -340,6 +349,8 @@ export function OwnerServiceCatalogPage() {
     },
   });
 
+  // Service saves can optionally create a category inline first, then submit the
+  // final service payload to /api/services.
   const serviceSaveMutation = useMutation({
     mutationFn: async ({
       mode,
@@ -388,6 +399,7 @@ export function OwnerServiceCatalogPage() {
     },
   });
 
+  // Service activation uses the dedicated activate/deactivate endpoints.
   const serviceToggleMutation = useMutation({
     mutationFn: async ({
       recordId,

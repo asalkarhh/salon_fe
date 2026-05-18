@@ -16,6 +16,10 @@ interface ResourceDetailPageProps<TRecord, TForm extends Record<string, unknown>
   resource: ResourceDefinition<TRecord, TForm>;
 }
 
+/**
+ * Generic read-only resource detail screen backed by the get-by-id endpoint
+ * defined in the resource registry.
+ */
 export function ResourceDetailPage<TRecord, TForm extends Record<string, unknown>>({
   resource,
 }: ResourceDetailPageProps<TRecord, TForm>) {
@@ -38,6 +42,8 @@ export function ResourceDetailPage<TRecord, TForm extends Record<string, unknown
       if (!id || !resource.getQuery) {
         throw new Error("This record cannot be loaded individually from the backend.");
       }
+      // The detail page always reads through the resource definition so custom
+      // field formatting can stay decoupled from transport details.
       return resource.getQuery(id, user);
     },
     enabled: Boolean(id && resource.getQuery),

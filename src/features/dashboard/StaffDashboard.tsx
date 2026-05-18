@@ -8,7 +8,13 @@ import { api, parseApiError } from "@/lib/api";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { AppointmentResponse, QueueTokenResponse, StaffEarningResponse } from "@/types/api";
 
+/**
+ * Staff summary screen that combines appointments, queue tokens, and the
+ * self-service earnings endpoint.
+ */
 export function StaffDashboard() {
+  // Staff-facing cards intentionally reuse the same operational endpoints the
+  // detailed modules use, keeping the summary honest and role-scoped.
   const appointmentsQuery = useQuery({
     queryKey: ["staff-dashboard", "appointments"],
     queryFn: async () => (await api.get<AppointmentResponse[]>("/api/appointments")).data,

@@ -7,6 +7,10 @@ import type {
   ResourceHelpers,
 } from "@/features/resources/resource-types";
 
+/**
+ * Resolves all lookup datasets required by a resource screen and exposes helper
+ * methods that turn backend ids into UI labels.
+ */
 export function useLookupResults(
   definitions: LookupDefinition[] | undefined,
   context: LookupContext,
@@ -25,6 +29,9 @@ export function useLookupResults(
     (definitions ?? []).forEach((definition, index) => {
       const query = queries[index] as UseQueryResult<unknown[], Error>;
       const raw = (query.data ?? []) as unknown[];
+      // Lookup definitions stay backend-shaped until this point; the helper
+      // layer converts them into select options and label maps for forms,
+      // filters, and detail screens.
       const options = raw.map((item) => definition.toOption(item));
       const labelMap = options.reduce<Record<string, string>>((accumulator, option) => {
         accumulator[option.value] = option.label;
@@ -56,6 +63,8 @@ export function useLookupResults(
   }, [definitions, queries]);
 }
 
+// Resource filters and query-string prefills arrive as unknown values, so this
+// helper centralizes the string conversion used by the generic resource pages.
 export function stringFromUnknown(value: unknown) {
   if (value === null || value === undefined) {
     return "";

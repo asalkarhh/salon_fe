@@ -23,6 +23,10 @@ import type {
   StaffResponse,
 } from "@/types/api";
 
+/**
+ * Appointment list and support view, backed by the appointment list endpoint
+ * plus supporting branch, customer, staff, and salon lookups.
+ */
 export function AppointmentsPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -42,6 +46,8 @@ export function AppointmentsPage() {
     }
   }, [isSuperAdmin, supportSalonId]);
 
+  // Super-admin support mode loads salons so the page can stay scoped to a
+  // selected tenant before hitting the appointment list endpoint.
   const salonsQuery = useQuery({
     queryKey: ["appointments", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,
@@ -72,6 +78,9 @@ export function AppointmentsPage() {
       ).data,
     enabled: canLoadSupportView,
   });
+
+  // Branch filtering stays client-side after the base branch list is loaded so
+  // the support and owner/staff experiences can share the same screen.
   const filteredBranches = useMemo(() => {
     if (!isSuperAdmin || !salonBusinessId) {
       return branchesQuery.data ?? [];

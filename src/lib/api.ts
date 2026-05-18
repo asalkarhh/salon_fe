@@ -21,6 +21,8 @@ export const api = axios.create({
   },
 });
 
+// Normalizes header writes because Axios may expose headers as either the
+// AxiosHeaders helper or a plain object depending on the request lifecycle.
 function setHeader(
   config: InternalAxiosRequestConfig,
   name: string,
@@ -38,6 +40,8 @@ function setHeader(
   (config.headers as Record<string, string>)[name] = value;
 }
 
+// Every request gets metadata so request/response logs can be correlated and
+// timed without each feature page implementing its own tracing logic.
 function resolveRequestMetadata(config: InternalAxiosRequestConfig) {
   const loggedConfig = config as LoggedRequestConfig;
   if (!loggedConfig.metadata) {
@@ -61,6 +65,9 @@ function resolveFailureLogger(status?: number) {
   return status && status < 500 ? logger.warn : logger.error;
 }
 
+// The shared request interceptor is the frontend equivalent of a data-access
+// layer: it injects auth context, assigns a request id, and emits uniform logs
+// before any screen-specific query or mutation reaches the backend.
 api.interceptors.request.use((config) => {
   const metadata = resolveRequestMetadata(config);
   const { token } = loadAuthState();
@@ -117,6 +124,8 @@ api.interceptors.response.use(
   },
 );
 
+// Converts backend validation and error payloads into a single user-facing
+// message so pages can show consistent toast and error-state text.
 export function parseApiError(error: unknown) {
   if (axios.isAxiosError<BackendErrorResponse>(error)) {
     const data = error.response?.data;

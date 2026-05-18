@@ -28,6 +28,9 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
+/**
+ * Queue token creation form backed by POST /api/queue-tokens.
+ */
 export function QueueTokenFormPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -41,6 +44,8 @@ export function QueueTokenFormPage() {
     },
   });
 
+  // Loads the branch and customer choices needed to build a valid queue token
+  // request, with optional salon scoping for super-admin support mode.
   const salonsQuery = useQuery({
     queryKey: ["queue-create", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,

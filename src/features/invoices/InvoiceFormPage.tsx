@@ -55,6 +55,10 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
+/**
+ * Invoice create/edit form that mirrors the backend invoice DTO, including
+ * nested line items and derived totals.
+ */
 export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
   const formName = `invoices-${mode}`;
   const { id } = useParams();
@@ -86,6 +90,8 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
     name: "items",
   });
 
+  // Supporting datasets are loaded up front so invoice creation can reference
+  // valid salons, branches, appointments, customers, and services.
   const salonsQuery = useQuery({
     queryKey: ["invoice-form", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,
@@ -115,6 +121,8 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
 
   useEffect(() => {
     if (recordQuery.data) {
+      // Edit mode reconstructs the line items from GET /api/invoices/{id} so
+      // the frontend can resubmit the full backend payload.
       logger.debug("forms", "invoice_record_loaded", {
         formName,
         recordId: id,
@@ -145,6 +153,8 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
       return;
     }
 
+    // Invoice creation can be prefixed from visits or queue screens so billing
+    // starts with the known branch, customer, appointment, or business date.
     const nextValues = form.getValues();
     let changed = false;
 
@@ -245,6 +255,8 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
       return;
     }
 
+    // Choosing an appointment auto-fills branch and customer fields because the
+    // backend invoice flow expects those references to match the appointment.
     const selectedAppointment = (appointmentsQuery.data ?? []).find(
       (appointment) => appointment.id === selectedAppointmentId,
     );
@@ -347,6 +359,8 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
               recordId: id,
               itemCount: values.items.length,
             });
+            // Totals are derived client-side from the current item rows so the
+            // payload stays aligned with the backend invoice calculation model.
             saveMutation.mutate({
               salonBusinessId: values.salonBusinessId || undefined,
               branchId: values.branchId,
@@ -499,6 +513,8 @@ export function InvoiceFormPage({ mode }: { mode: "create" | "edit" }) {
                     form.setValue(`items.${index}.serviceId`, event.target.value);
                     const matched = filteredServices.find((service) => service.id === event.target.value);
                     if (matched) {
+                      // Service selection seeds the invoice line from the service
+                      // catalog so billing starts with the configured defaults.
                       form.setValue(`items.${index}.description`, matched.name);
                       form.setValue(`items.${index}.unitPrice`, matched.price);
                       form.setValue(

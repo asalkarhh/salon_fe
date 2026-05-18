@@ -19,6 +19,10 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+/**
+ * Auth entry page that performs the backend login flow and then hydrates the
+ * current user context before entering the app shell.
+ */
 export function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
@@ -42,6 +46,9 @@ export function LoginPage() {
       // Credentials are intentionally excluded from logs; we only record the
       // authentication flow around the request.
       logger.info("auth", "login_submission_started");
+      // Login is a two-step backend flow on purpose: first exchange credentials
+      // for a token, then fetch /api/auth/me to resolve the role and salon
+      // context that drive the rest of the frontend.
       const loginResponse = await api.post<LoginResponse>("/api/auth/login", values);
       const meResponse = await api.get<CurrentUserResponse>("/api/auth/me", {
         headers: {

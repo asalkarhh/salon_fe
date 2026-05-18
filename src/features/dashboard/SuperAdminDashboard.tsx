@@ -27,7 +27,12 @@ import { api, parseApiError } from "@/lib/api";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { SuperAdminDashboardResponse } from "@/types/api";
 
+/**
+ * Super-admin summary screen backed by GET /api/dashboard/super-admin.
+ */
 export function SuperAdminDashboard() {
+  // Loads the platform-wide dashboard aggregate from the dedicated backend
+  // summary endpoint instead of composing separate client-side queries.
   const dashboardQuery = useQuery({
     queryKey: ["dashboard", "super-admin"],
     queryFn: async () =>

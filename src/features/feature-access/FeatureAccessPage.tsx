@@ -20,11 +20,17 @@ import type {
   SalonFeatureAccessResponse,
 } from "@/types/api";
 
+/**
+ * Salon feature override editor backed by the feature-access get and update
+ * endpoints.
+ */
 export function FeatureAccessPage() {
   const params = useParams<{ salonBusinessId?: string }>();
   const [selectedSalonId, setSelectedSalonId] = useState(params.salonBusinessId ?? "");
   const [draft, setDraft] = useState<Record<string, FeatureAccessItemRequest>>({});
 
+  // The page first loads all salons so the operator can choose which tenant's
+  // effective feature matrix to inspect and edit.
   const salonsQuery = useQuery({
     queryKey: ["feature-access", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,
@@ -46,6 +52,8 @@ export function FeatureAccessPage() {
     enabled: Boolean(selectedSalonId),
   });
 
+  // Saving writes back the full set of editor rows so the backend can rebuild
+  // the final effective feature matrix for the selected salon.
   const updateMutation = useMutation({
     mutationFn: async (payload: FeatureAccessItemRequest[]) =>
       (

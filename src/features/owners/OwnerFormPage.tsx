@@ -61,16 +61,23 @@ interface OwnerFormPageProps {
   mode: "create" | "edit";
 }
 
+/**
+ * Handles both owner onboarding and owner profile updates from the super-admin
+ * workspace.
+ */
 export function OwnerFormPage({ mode }: OwnerFormPageProps) {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  // Edit mode loads the existing owner summary from GET /api/owners/{id}.
   const ownerQuery = useQuery({
     queryKey: ["owners", id],
     queryFn: async () => (await api.get<OwnerResponse>(`/api/owners/${id}`)).data,
     enabled: mode === "edit" && Boolean(id),
   });
 
+  // Create mode needs the plan catalog because POST /api/auth/create-owner also
+  // provisions the owner's initial subscription.
   const plansQuery = useQuery({
     queryKey: ["plans", "owner-form"],
     queryFn: async () => (await api.get<PlanResponse[]>("/api/subscriptions/plans")).data,
@@ -103,6 +110,8 @@ export function OwnerFormPage({ mode }: OwnerFormPageProps) {
     }
   }, [form, mode, ownerQuery.data]);
 
+  // Owner creation calls the dedicated onboarding endpoint that also creates the
+  // salon business, default branch, and starter subscription.
   const createMutation = useMutation({
     mutationFn: async (payload: CreateOwnerRequest) =>
       (await api.post<CreateOwnerResponse>("/api/auth/create-owner", payload)).data,
@@ -113,6 +122,8 @@ export function OwnerFormPage({ mode }: OwnerFormPageProps) {
     onError: (error) => toast.error(parseApiError(error)),
   });
 
+  // Owner edits call the standard owner update endpoint because the salon and
+  // account already exist.
   const updateMutation = useMutation({
     mutationFn: async (payload: OwnerUpdateRequest) =>
       (await api.put<OwnerResponse>(`/api/owners/${id}`, payload)).data,

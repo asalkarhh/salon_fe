@@ -21,6 +21,10 @@ import type {
 
 const statuses = ["BOOKED", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
 
+/**
+ * Appointment detail and status-management screen backed by appointment detail
+ * plus supporting lookup endpoints.
+ */
 export function AppointmentDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -48,6 +52,8 @@ export function AppointmentDetailPage() {
     queryFn: async () => (await api.get<ServiceResponse[]>("/api/services")).data,
   });
 
+  // Status changes use the dedicated patch endpoint instead of re-submitting the
+  // full appointment payload.
   const statusMutation = useMutation({
     mutationFn: async (payload: AppointmentStatusUpdateRequest) =>
       (await api.patch<AppointmentResponse>(`/api/appointments/${id}/status`, payload)).data,
@@ -95,6 +101,8 @@ export function AppointmentDetailPage() {
   const branch = (branchesQuery.data ?? []).find((item) => item.id === appointment.branchId);
   const customer = (customersQuery.data ?? []).find((item) => item.id === appointment.customerProfileId);
   const staff = (staffQuery.data ?? []).find((item) => item.id === appointment.staffProfileId);
+  // Supporting lookups are resolved locally so the detail endpoint can stay
+  // small and focused on the appointment aggregate itself.
   const serviceMap = Object.fromEntries((servicesQuery.data ?? []).map((service) => [service.id, service.name]));
 
   return (

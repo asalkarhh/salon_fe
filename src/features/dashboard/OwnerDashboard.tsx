@@ -36,6 +36,8 @@ const checklist = [
 ];
 
 export function OwnerDashboard() {
+  // The owner workspace uses the dedicated summary endpoint so revenue,
+  // appointment, and staff-performance cards stay consistent with backend rules.
   const dashboardQuery = useQuery({
     queryKey: ["dashboard", "owner"],
     queryFn: async () => (await api.get<OwnerDashboardResponse>("/api/dashboard/owner")).data,

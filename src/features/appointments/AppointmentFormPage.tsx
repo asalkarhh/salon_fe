@@ -54,6 +54,10 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
+/**
+ * Appointment create/edit form that maps directly to the backend appointment
+ * payload, including nested appointment service rows.
+ */
 export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
   const formName = `appointments-${mode}`;
   const { id } = useParams();
@@ -82,6 +86,8 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
     name: "services",
   });
 
+  // The form loads all supporting datasets needed to build a valid
+  // AppointmentRequest payload.
   const salonsQuery = useQuery({
     queryKey: ["appointment-form", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,
@@ -112,6 +118,8 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
 
   useEffect(() => {
     if (recordQuery.data) {
+      // Edit mode rehydrates the nested service rows from GET /api/appointments/{id}
+      // so the frontend can resubmit the full backend shape.
       logger.debug("forms", "appointment_record_loaded", {
         formName,
         recordId: id,
@@ -194,6 +202,8 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
     [serviceRows],
   );
 
+  // Create mode posts to /api/appointments, while edit mode puts back to the
+  // same record-specific endpoint.
   const saveMutation = useMutation({
     mutationFn: async (payload: AppointmentRequest) => {
       if (mode === "create") {
@@ -271,6 +281,8 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
               recordId: id,
               serviceCount: values.services.length,
             });
+            // Time values are normalized to the backend's expected HH:mm:ss
+            // format before the mutation is sent.
             saveMutation.mutate({
               salonBusinessId: values.salonBusinessId || undefined,
               branchId: values.branchId,
@@ -397,6 +409,9 @@ export function AppointmentFormPage({ mode }: { mode: "create" | "edit" }) {
                     form.setValue(`services.${index}.serviceId`, event.target.value);
                     const matched = filteredServices.find((service) => service.id === event.target.value);
                     if (matched) {
+                      // Service selection preloads the catalog price and duration
+                      // so the request matches what the backend would otherwise
+                      // derive from the selected service.
                       form.setValue(`services.${index}.price`, matched.price);
                       form.setValue(`services.${index}.durationMinutes`, matched.durationMinutes);
                     }

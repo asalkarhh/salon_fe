@@ -23,6 +23,10 @@ import type {
   SalonBusinessResponse,
 } from "@/types/api";
 
+/**
+ * Invoice list and super-admin support view backed by /api/invoices plus the
+ * supporting branch, customer, appointment, and salon lookups.
+ */
 export function InvoicesPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -39,6 +43,8 @@ export function InvoicesPage() {
     }
   }, [isSuperAdmin, supportSalonId]);
 
+  // Super-admin support mode resolves salon context first so the invoice list
+  // stays read-only and tenant-scoped.
   const salonsQuery = useQuery({
     queryKey: ["invoices", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,

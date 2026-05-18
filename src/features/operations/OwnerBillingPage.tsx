@@ -45,6 +45,10 @@ function buildPath(path: string, params: Record<string, string | undefined>) {
   return query ? `${path}?${query}` : path;
 }
 
+/**
+ * Owner billing workspace that brings invoice and payment endpoints into one
+ * collection-focused view.
+ */
 export function OwnerBillingPage() {
   const [activeTab, setActiveTab] = useState<BillingTab>("invoices");
   const [search, setSearch] = useState("");
@@ -52,6 +56,8 @@ export function OwnerBillingPage() {
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("");
 
+  // Billing combines the invoice and payment modules so owners can monitor what
+  // still needs collection and jump directly into payment capture.
   const branchesQuery = useQuery({
     queryKey: ["owner-billing", "branches"],
     queryFn: async () => (await api.get<BranchResponse[]>("/api/branches")).data,
@@ -306,11 +312,13 @@ export function OwnerBillingPage() {
                     <Link to={`${routes.invoices}/${record.id}/edit`}>Edit</Link>
                   </Button>
                   {record.paymentStatus !== "PAID" && record.paymentStatus !== "REFUNDED" ? (
-                    <Button size="sm" asChild>
-                      <Link to={buildPath(`${routes.payments}/new`, { invoiceId: record.id })}>
-                        <CreditCard className="h-4 w-4" />
-                        Collect Payment
-                      </Link>
+                  <Button size="sm" asChild>
+                    <Link to={buildPath(`${routes.payments}/new`, { invoiceId: record.id })}>
+                      {/* Prefills the payment form with the invoice id so
+                          collection can start from an outstanding bill. */}
+                      <CreditCard className="h-4 w-4" />
+                      Collect Payment
+                    </Link>
                     </Button>
                   ) : null}
                 </div>

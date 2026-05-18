@@ -8,6 +8,10 @@ import { api, parseApiError } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import type { AppointmentResponse } from "@/types/api";
 
+/**
+ * Customer summary screen backed only by the appointment list endpoint because
+ * that is the current backend surface available to customers.
+ */
 export function CustomerDashboard() {
   const appointmentsQuery = useQuery({
     queryKey: ["customer-dashboard", "appointments"],

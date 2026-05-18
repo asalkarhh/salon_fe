@@ -16,6 +16,10 @@ import type {
   ServiceResponse,
 } from "@/types/api";
 
+/**
+ * Read-only invoice detail screen backed by the invoice detail endpoint and the
+ * supporting lookups needed to render labels for related ids.
+ */
 export function InvoiceDetailPage() {
   const { id } = useParams();
 
@@ -77,6 +81,8 @@ export function InvoiceDetailPage() {
   const branch = (branchesQuery.data ?? []).find((item) => item.id === invoice.branchId);
   const customer = (customersQuery.data ?? []).find((item) => item.id === invoice.customerProfileId);
   const appointment = (appointmentsQuery.data ?? []).find((item) => item.id === invoice.appointmentId);
+  // Supporting lookups stay separate from the invoice detail call so the page
+  // can render human-readable labels without expanding the invoice payload.
   const serviceMap = Object.fromEntries((servicesQuery.data ?? []).map((service) => [service.id, service.name]));
 
   return (

@@ -20,6 +20,10 @@ interface ResourceListPageProps<TRecord, TForm extends Record<string, unknown>> 
   resource: ResourceDefinition<TRecord, TForm>;
 }
 
+/**
+ * Generic list screen that delegates backend list, activate, and deactivate
+ * calls to the resource definition supplied for the current route.
+ */
 export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>({
   resource,
 }: ResourceListPageProps<TRecord, TForm>) {
@@ -49,11 +53,15 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
     (filter) => !(filter.hidden?.(lookupContext) ?? false),
   );
 
+  // Every resource list is powered by the endpoint-specific listQuery defined
+  // in the resource registry, which lets one screen serve many modules.
   const listQuery = useQuery({
     queryKey: [resource.key, "list", user.role, filters],
     queryFn: () => resource.listQuery(user, filters),
   });
 
+  // Status-toggle actions are optional because not every backend resource
+  // exposes activate/deactivate endpoints.
   const activateMutation = useMutation({
     mutationFn: async (id: string) => {
       if (!resource.activateMutation) {
@@ -84,6 +92,8 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
 
   const filteredData = useMemo(() => {
     const source = listQuery.data ?? [];
+    // Search stays client-side so the same resource definition can work even
+    // when the backend endpoint only supports coarse filters.
     return source.filter((record) => {
       const matchesSearch =
         search.trim().length === 0 ||
@@ -198,7 +208,7 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
         searchValue={search}
         onSearchChange={setSearch}
         placeholder={resource.searchPlaceholder ?? `Search ${resource.title.toLowerCase()}`}
-        filters={
+      filters={
           visibleFilters?.length ? (
             <div className="grid w-full gap-3 sm:grid-cols-2 xl:flex">
               {visibleFilters.map((filter) => (
@@ -222,6 +232,8 @@ export function ResourceListPage<TRecord, TForm extends Record<string, unknown>>
                         : filter.options ?? [];
                       const isSearchable = filter.searchable ?? filter.lookupKey === "salons";
 
+                      // Lookup-backed filters reuse the same shared lookup
+                      // definitions as the resource forms and details.
                       if (isSearchable) {
                         return (
                           <SearchableSelect

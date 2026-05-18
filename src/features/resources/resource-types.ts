@@ -2,6 +2,8 @@ import type { ZodTypeAny } from "zod";
 import type { CurrentUserResponse } from "@/types/api";
 import type { Role } from "@/types/enums";
 
+// Lookup context carries the current user, form values, and active filters so a
+// lookup query can decide which backend endpoint parameters to send.
 export interface SelectOption {
   label: string;
   value: string;
@@ -24,6 +26,9 @@ export interface LookupResult {
   raw: unknown[];
 }
 
+// Resource definitions are the frontend's endpoint registry. Generic list,
+// form, and detail pages read this contract to know which queries and
+// mutations to call for each backend resource.
 export interface ResourceHelpers {
   lookupLabel: (lookupKey: string, value?: string | null) => string;
   lookupOptions: (lookupKey: string) => SelectOption[];

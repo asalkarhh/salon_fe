@@ -27,6 +27,10 @@ interface ResourceFormPageProps<TRecord, TForm extends Record<string, unknown>> 
   mode: "create" | "edit";
 }
 
+/**
+ * Generic create/edit screen that converts a resource definition into the
+ * correct backend get, create, and update calls.
+ */
 export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>({
   resource,
   mode,
@@ -58,6 +62,8 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
       if (!id || !resource.getQuery) {
         throw new Error("Record could not be loaded from the backend.");
       }
+      // Edit mode always rehydrates from the backend so the form mirrors the
+      // latest persisted DTO values before any mutation is submitted.
       return resource.getQuery(id, user);
     },
     enabled: mode === "edit" && Boolean(id) && Boolean(resource.getQuery),
@@ -89,6 +95,8 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
       return;
     }
 
+    // Some create flows arrive with query-string hints from another page, such
+    // as opening "new invoice" from a visit or queue record.
     const nextValues = resource.defaultValues(user) as Record<string, unknown>;
     let changed = false;
 
@@ -168,6 +176,8 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
     filters: {},
   });
 
+  // The mutation function switches between create and update endpoints, but the
+  // surrounding success/error handling stays generic across resource modules.
   const saveMutation = useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
       if (mode === "create") {
@@ -212,6 +222,8 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
       recordId: id,
       fieldCount: Object.keys(formValues).length,
     });
+    // Resource definitions own the DTO mapping so the generic page can stay
+    // focused on form orchestration instead of payload specifics.
     saveMutation.mutate(resource.toPayload(formValues as TForm, user));
   };
 
@@ -268,6 +280,8 @@ export function ResourceFormPage<TRecord, TForm extends Record<string, unknown>>
                     }
                   : undefined;
 
+              // Each field definition decides how the generic screen renders it,
+              // whether from static options or backend-fed lookups.
               return (
                 <div
                   key={field.name}

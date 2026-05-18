@@ -7,7 +7,13 @@ import { api, parseApiError } from "@/lib/api";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { StaffEarningResponse } from "@/types/api";
 
+/**
+ * Staff self-service earning history backed by the dedicated
+ * /api/staff-earnings/my-earnings endpoint.
+ */
 export function MyEarningsPage() {
+  // This page intentionally uses the self-service endpoint instead of the
+  // general list endpoint so staff users never need to pass a profile id.
   const earningsQuery = useQuery({
     queryKey: ["my-earnings"],
     queryFn: async () =>

@@ -35,6 +35,9 @@ import { StaffEarningsPage } from "@/features/staff-earnings/StaffEarningsPage";
 import type { Role } from "@/types/enums";
 import { useAuth } from "@/features/auth/AuthProvider";
 
+/**
+ * Shared not-found surface for unknown or moved routes.
+ */
 function NotFoundPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
@@ -46,6 +49,10 @@ function NotFoundPage() {
   );
 }
 
+/**
+ * Wraps a resource-list route so the generic resource screen can be reused for
+ * multiple backend modules.
+ */
 function ResourceListRoute({ resourceKey }: { resourceKey: ResourceKey }) {
   return (
     <RoleGuard roles={getResourceUiRoles(resourceKey, "list")}>
@@ -54,6 +61,10 @@ function ResourceListRoute({ resourceKey }: { resourceKey: ResourceKey }) {
   );
 }
 
+/**
+ * Reuses the generic resource form for create and edit flows defined in the
+ * resource registry.
+ */
 function ResourceFormRoute({
   resourceKey,
   mode,
@@ -68,6 +79,10 @@ function ResourceFormRoute({
   );
 }
 
+/**
+ * Reuses the generic resource detail page for resource types that expose a
+ * backend get-by-id endpoint.
+ */
 function ResourceDetailRoute({ resourceKey }: { resourceKey: ResourceKey }) {
   return (
     <RoleGuard roles={getResourceUiRoles(resourceKey, "detail")}>
@@ -121,6 +136,8 @@ function RedirectOwnersToBilling({
 function ServiceCatalogRoute() {
   const { user } = useAuth();
 
+  // Owners use a custom combined category/service workspace, while other roles
+  // stay on the generic service resource screens.
   if (user?.role === "SALON_OWNER") {
     return <OwnerServiceCatalogPage />;
   }
@@ -132,6 +149,10 @@ function guardElement(roles: readonly Role[], element: React.ReactNode) {
   return <RoleGuard roles={roles}>{element}</RoleGuard>;
 }
 
+/**
+ * Central route map for the application. It combines generic resource routes
+ * with custom feature pages and role-specific redirects.
+ */
 export function AppRouter() {
   const element = useRoutes([
     {

@@ -23,6 +23,10 @@ function totalOf(records: StaffEarningResponse[], selector: (record: StaffEarnin
   return records.reduce((sum, record) => sum + selector(record), 0);
 }
 
+/**
+ * Earnings analytics screen backed by /api/staff-earnings plus salon, branch,
+ * and staff lookups for filtering.
+ */
 export function StaffEarningsPage() {
   const { user } = useAuth();
   const [salonBusinessId, setSalonBusinessId] = useState("");
@@ -40,6 +44,8 @@ export function StaffEarningsPage() {
     setStaffId("");
   }, [branchId]);
 
+  // The page loads filter lookups first, then fetches earnings through the
+  // backend earnings endpoint using the currently selected filter set.
   const salonsQuery = useQuery({
     queryKey: ["staff-earnings", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,

@@ -18,6 +18,10 @@ import type {
 
 const statuses = ["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
 
+/**
+ * Queue token detail and status-management screen backed by the queue token
+ * detail endpoint plus the queue status patch endpoint.
+ */
 export function QueueTokenDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -37,6 +41,8 @@ export function QueueTokenDetailPage() {
     queryFn: async () => (await api.get<CustomerResponse[]>("/api/customers")).data,
   });
 
+  // Queue status changes use the dedicated patch endpoint so the UI can move
+  // tokens through the operational lifecycle without editing the full record.
   const patchMutation = useMutation({
     mutationFn: async (payload: QueueTokenStatusUpdateRequest) =>
       (await api.patch<QueueTokenResponse>(`/api/queue-tokens/${id}/status`, payload)).data,

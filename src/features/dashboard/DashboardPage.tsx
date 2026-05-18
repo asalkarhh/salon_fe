@@ -4,6 +4,9 @@ import { OwnerDashboard } from "@/features/dashboard/OwnerDashboard";
 import { StaffDashboard } from "@/features/dashboard/StaffDashboard";
 import { SuperAdminDashboard } from "@/features/dashboard/SuperAdminDashboard";
 
+/**
+ * Selects the correct dashboard screen based on the authenticated user's role.
+ */
 export function DashboardPage() {
   const { user } = useAuth();
 

@@ -28,9 +28,15 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
+/**
+ * Legacy owner-onboarding screen backed by the create-owner endpoint and plan
+ * catalog lookup.
+ */
 export function CreateOwnerPage() {
   const [result, setResult] = useState<CreateOwnerResponse | null>(null);
 
+  // The onboarding flow needs the plan catalog because POST /api/auth/create-owner
+  // also provisions the owner's initial subscription.
   const plansQuery = useQuery({
     queryKey: ["plans", "lookup"],
     queryFn: async () => (await api.get<PlanResponse[]>("/api/subscriptions/plans")).data,

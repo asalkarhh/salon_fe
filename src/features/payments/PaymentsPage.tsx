@@ -17,6 +17,10 @@ import { api, parseApiError } from "@/lib/api";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { InvoiceResponse, PaymentResponse, SalonBusinessResponse } from "@/types/api";
 
+/**
+ * Payment list and support view backed by /api/payments and the invoice list
+ * endpoint used to resolve invoice labels.
+ */
 export function PaymentsPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -34,6 +38,8 @@ export function PaymentsPage() {
     }
   }, [isSuperAdmin, supportSalonId]);
 
+  // Super-admin support mode resolves salon context first so payment browsing
+  // stays read-only and tenant-scoped.
   const salonsQuery = useQuery({
     queryKey: ["payments", "salons"],
     queryFn: async () => (await api.get<SalonBusinessResponse[]>("/api/salons")).data,

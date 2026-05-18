@@ -46,6 +46,10 @@ function buildPath(path: string, params: Record<string, string | undefined>) {
   return query ? `${path}?${query}` : path;
 }
 
+/**
+ * Owner operations view that combines appointment and queue endpoints into one
+ * visit-management workspace.
+ */
 export function OwnerVisitsPage() {
   const [activeTab, setActiveTab] = useState<VisitsTab>("appointments");
   const [search, setSearch] = useState("");
@@ -54,6 +58,8 @@ export function OwnerVisitsPage() {
   const [appointmentDate, setAppointmentDate] = useState("");
   const [queueDate, setQueueDate] = useState("");
 
+  // Visits combines several backend datasets so owners can move from scheduling
+  // to queue handling and then into billing without changing modules.
   const branchesQuery = useQuery({
     queryKey: ["owner-visits", "branches"],
     queryFn: async () => (await api.get<BranchResponse[]>("/api/branches")).data,
@@ -309,6 +315,8 @@ export function OwnerVisitsPage() {
                         invoiceDate: record.appointmentDate,
                       })}
                     >
+                      {/* Prefills the invoice form from the current visit so the
+                          billing flow can start with known appointment data. */}
                       <Receipt className="h-4 w-4" />
                       Create Bill
                     </Link>
@@ -390,6 +398,8 @@ export function OwnerVisitsPage() {
                         invoiceDate: record.tokenDate,
                       })}
                     >
+                      {/* Walk-in billing preloads branch, customer, and date from
+                          the queue token before the invoice is created. */}
                       <Receipt className="h-4 w-4" />
                       Create Bill
                     </Link>

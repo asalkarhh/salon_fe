@@ -22,12 +22,18 @@ interface SubscriptionStatusActionsProps {
   compact?: boolean;
 }
 
+/**
+ * Shared status-control UI for subscriptions, backed by the subscription status
+ * patch endpoint.
+ */
 export function SubscriptionStatusActions({
   subscription,
   compact = false,
 }: SubscriptionStatusActionsProps) {
   const queryClient = useQueryClient();
 
+  // Uses PATCH /api/subscriptions/{id}/status so admins can change lifecycle
+  // state without editing the rest of the subscription payload.
   const updateStatusMutation = useMutation({
     mutationFn: async (status: SubscriptionStatus) =>
       (

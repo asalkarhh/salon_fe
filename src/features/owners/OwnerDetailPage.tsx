@@ -20,6 +20,9 @@ function detailItem(label: string, value: React.ReactNode) {
   );
 }
 
+/**
+ * Super-admin read-only owner detail view backed by GET /api/owners/{id}.
+ */
 export function OwnerDetailPage() {
   const { id } = useParams();
 

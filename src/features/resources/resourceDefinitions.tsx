@@ -89,6 +89,8 @@ function lookupOption<T extends { id: string }>(
   };
 }
 
+// Super-admin-only salon lookup used when a resource form or filter needs to
+// resolve a salon id through the backend salon list endpoint.
 const salonLookup: LookupDefinition<SalonBusinessResponse> = {
   key: "salons",
   queryKey: () => ["lookup", "salons"],
@@ -97,6 +99,7 @@ const salonLookup: LookupDefinition<SalonBusinessResponse> = {
   toOption: toSalonSelectOption,
 };
 
+// Plan lookup used by subscription and owner-onboarding flows.
 const planLookup: LookupDefinition<PlanResponse> = {
   key: "plans",
   queryKey: () => ["lookup", "plans"],
@@ -104,6 +107,8 @@ const planLookup: LookupDefinition<PlanResponse> = {
   toOption: (item) => lookupOption(item, `${item.name} â€¢ ${formatCurrency(item.monthlyPrice)}`),
 };
 
+// Branch lookups inherit the currently selected salon so dependent selects and
+// filters stay aligned with the same backend tenant context.
 const branchLookup: LookupDefinition<BranchResponse> = {
   key: "branches",
   queryKey: (context) => [
@@ -128,6 +133,7 @@ const branchLookup: LookupDefinition<BranchResponse> = {
   }),
 };
 
+// Category lookups power service creation and service-detail rendering.
 const categoryLookup: LookupDefinition<ServiceCategoryResponse> = {
   key: "serviceCategories",
   queryKey: (context) => [
@@ -161,6 +167,8 @@ function normalizeCustomerGender(gender?: string | null) {
   return gender;
 }
 
+// Service lookups feed appointment and invoice forms, where service ids must be
+// converted into selectable catalog options.
 export const serviceLookup: LookupDefinition<ServiceResponse> = {
   key: "services",
   queryKey: (context) => [
@@ -183,6 +191,7 @@ export const serviceLookup: LookupDefinition<ServiceResponse> = {
   toOption: (item) => lookupOption(item, `${item.name} â€¢ ${formatCurrency(item.price)}`),
 };
 
+// Customer lookup reused by visits, queue, appointment, and invoice flows.
 export const customerLookup: LookupDefinition<CustomerResponse> = {
   key: "customers",
   queryKey: () => ["lookup", "customers"],
@@ -190,6 +199,7 @@ export const customerLookup: LookupDefinition<CustomerResponse> = {
   toOption: (item) => lookupOption(item, `${item.firstName} ${item.lastName ?? ""}`.trim()),
 };
 
+// Staff lookup supports both branch-aware filtering and staff assignment forms.
 export const staffLookup: LookupDefinition<StaffResponse> = {
   key: "staff",
   queryKey: (context) => [
@@ -220,6 +230,7 @@ export const staffLookup: LookupDefinition<StaffResponse> = {
   }),
 };
 
+// Invoice lookup is used mainly by payment forms and detail screens.
 const invoiceLookup: LookupDefinition<{ id: string; invoiceNumber: string }> = {
   key: "invoices",
   queryKey: () => ["lookup", "invoices"],
@@ -370,7 +381,13 @@ function detailCard(title: string, lines: React.ReactNode[]) {
   );
 }
 
+// Resource registry is the frontend endpoint map for the generic resource
+// screens. Each entry tells the list/form/detail pages which backend queries
+// and mutations to call for that module.
 export const resourceRegistry = {
+  // Maps generic resource screens to the salon admin endpoints:
+  // GET /api/salons, GET /api/salons/{id}, PUT /api/salons/{id},
+  // PATCH /api/salons/{id}/activate, and PATCH /api/salons/{id}/suspend.
   salons: {
     key: "salons",
     title: "Salons",
@@ -511,6 +528,8 @@ export const resourceRegistry = {
       ) : null,
     searchValues: (record) => [record.businessName, record.salonCode, record.ownerName, record.ownerUsername],
   } satisfies ResourceDefinition<SalonBusinessResponse, UpdateSalonBusinessRequest>,
+  // Maps generic resource screens to the plan catalog endpoints under
+  // /api/subscriptions/plans for list, get, create, and update flows.
   plans: {
     key: "plans",
     title: "Plans",
@@ -583,6 +602,8 @@ export const resourceRegistry = {
     ],
     searchValues: (record) => [record.name, record.description ?? ""],
   } satisfies ResourceDefinition<PlanResponse, PlanRequest>,
+  // Maps generic resource screens to /api/subscriptions, while the separate
+  // status action component drives PATCH /api/subscriptions/{id}/status.
   subscriptions: {
     key: "subscriptions",
     title: "Subscriptions",
@@ -705,6 +726,8 @@ export const resourceRegistry = {
       record.status,
     ],
   } satisfies ResourceDefinition<SubscriptionResponse, SubscriptionRequest>,
+  // Maps generic resource screens to the branch management endpoints under
+  // /api/branches.
   branches: {
     key: "branches",
     title: "Branches",
@@ -806,6 +829,8 @@ export const resourceRegistry = {
       record.phone ?? "",
     ],
   } satisfies ResourceDefinition<BranchResponse, BranchCreateRequest>,
+  // Maps generic resource screens to service-category endpoints under
+  // /api/services/categories.
   serviceCategories: {
     key: "service-categories",
     title: "Service Categories",
@@ -899,6 +924,8 @@ export const resourceRegistry = {
     ],
     searchValues: (record) => [record.name, record.description ?? ""],
   } satisfies ResourceDefinition<ServiceCategoryResponse, ServiceCategoryRequest>,
+  // Maps generic resource screens to the service catalog endpoints under
+  // /api/services.
   services: {
     key: "services",
     title: "Services",
@@ -1010,6 +1037,8 @@ export const resourceRegistry = {
       record.description ?? "",
     ],
   } satisfies ResourceDefinition<ServiceResponse, ServiceRequest>,
+  // Maps generic resource screens to customer CRUD and status endpoints under
+  // /api/customers.
   customers: {
     key: "customers",
     title: "Customers",
@@ -1156,6 +1185,8 @@ export const resourceRegistry = {
       (!filters.salonBusinessId || record.salonBusinessId === filters.salonBusinessId)
       && (!filters.branchId || record.branchId === filters.branchId),
   } satisfies ResourceDefinition<CustomerResponse, CustomerRequest>,
+  // Maps generic resource screens to staff CRUD and status endpoints under
+  // /api/staff.
   staff: {
     key: "staff",
     title: "Staff",
@@ -1318,6 +1349,8 @@ export const resourceRegistry = {
       record.designation ?? "",
     ],
   } satisfies ResourceDefinition<StaffResponse, Record<string, unknown>>,
+  // Maps generic resource screens to payment endpoints under /api/payments,
+  // while invalidating invoice and staff-earnings views after successful saves.
   payments: {
     key: "payments",
     title: "Payments",
