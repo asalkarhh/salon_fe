@@ -3,6 +3,7 @@ import type { Role } from "@/types/enums";
 export const APP_NAME = "Lustre Salon Cloud";
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:8080";
+console.log("API URL:", API_BASE_URL);
 export const AUTH_STORAGE_KEY = "salon-fe-auth";
 
 export const ROLE_LABELS: Record<Role, string> = {
